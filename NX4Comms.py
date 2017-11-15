@@ -1426,18 +1426,18 @@ if test=="uart":
             #o.testFlashPowerLED()   #'hello world!'
             #o.testWriteFB()
             #o.testSetupFill()
-            #o.testImageDisplay()
-
+            o.testImageDisplay()
+            o.testFBBlending()
+        
             #anything ffmpeg will play..
-            o.testVideoPlayback("../../media/test.mkv",fps=23.976215)
+            #o.testVideoPlayback("../../media/test.mkv",fps=23.976215)
             #o.ioDevice.stop=True
             #o.testDotCorrectLoad()
             
             #this is a great speed for actual use, 5mhz pixel clock
             #which is only 695us for a whole frame (1438fps)
             
-            #o.testFBBlending()
-        
+            
             #o.testWriteTestPixel()
             #o.testI2C()
             
