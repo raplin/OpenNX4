@@ -67,9 +67,9 @@ module led_array_driver(
 	 input [7:0] fb1_dout,
 	 input `NX4_REGISTERS_FLAT, 
 	
-	 input  [11:0] il0_dout,	//intensity lookup; runs at grayscale clock rate because we need to do two lookups per pixel (dual frame buffers)
+	 input  [`INTERNAL_PIXEL_WIDTH_BITS-1:0] il0_dout,	//intensity lookup; runs at grayscale clock rate because we need to do two lookups per pixel (dual frame buffers)
 	 output reg [7:0] il0_addr,
-	 input  [11:0] il1_dout,
+	 input  [`INTERNAL_PIXEL_WIDTH_BITS-1:0] il1_dout,
 	 output reg [7:0] il1_addr
     );
 
@@ -238,8 +238,8 @@ module led_array_driver(
 
 
 //`define BYPASS_IL   //debug option - turns off 8b->12b lookup and blend multipliers, i.e. output pixels = low 8 bits of FB directly
-	reg [11:0] bypass0;
-	reg [11:0] bypass1;
+	reg [`INTERNAL_PIXEL_WIDTH_BITS-1:0] bypass0;
+	reg [`INTERNAL_PIXEL_WIDTH_BITS-1:0] bypass1;
 
 	always @(posedge grayscale_clock)
 	begin:movePixels //move pixels from framebuffer read through the intensity lookup table via a pre-multiply used for blending/fading
@@ -250,8 +250,8 @@ module led_array_driver(
 			il0_addr<=il0_taddr[15 -:8];	
 			il1_addr<=il1_taddr[15 -:8];	//using a multiply before the lookup means blends between buffers are a little odd in terms of numbers; could move the multiply to be post-lookup
 `else
-			bypass0[11:0]<={{0,0,0,0},{fb0_dout[7:0]}};
-			bypass1[11:0]<={{0,0,0,0},{fb1_dout[7:0]}};
+			bypass0[`INTERNAL_PIXEL_WIDTH_BITS-1:0]<={{0,0,0,0},{fb0_dout[7:0]}};
+			bypass1`INTERNAL_PIXEL_WIDTH_BITS-1:0]<={{0,0,0,0},{fb1_dout[7:0]}};
 `endif
 	end
 	
@@ -355,7 +355,7 @@ module led_array_driver(
 							
 							if (led_mode==1)begin	//dot correct mode
 								temp_pixel_out=nx4_registers[`OpenNX4_REG_DOT_CORRECT_TEST];
-								pixel_buf[ agen_pixel_write_reg ][11:0] <= temp_pixel_out[11:0];
+								pixel_buf[ agen_pixel_write_reg ][GRAYSCALE_BITS-1:0] <= temp_pixel_out[GRAYSCALE_BITS-1:0];
 							end
 							else begin
 								//add the two corresponding pixels from each fb from output of 8b->12b lookup
@@ -363,20 +363,30 @@ module led_array_driver(
 //`define OUTPUT_TEST_PIXEL	//debug
 `ifndef OUTPUT_TEST_PIXEL
 `ifndef BYPASS_IL
-								temp_pixel_out[12:0]=il0_dout[11:0] + il1_dout[11:0]; 	//normal operation
+								temp_pixel_out[`INTERNAL_PIXEL_WIDTH_BITS:0]=il0_dout[`INTERNAL_PIXEL_WIDTH_BITS-1:0] + il1_dout[`INTERNAL_PIXEL_WIDTH_BITS-1:0]; 	//normal operation
 `else
-								temp_pixel_out[12:0]=bypass0[7:0]+bypass1[7:0];
+								temp_pixel_out[`INTERNAL_PIXEL_WIDTH_BITS:0]=bypass0[7:0]+bypass1[7:0];
 `endif
 `else //test pixel
 								temp_pixel_out=nx4_registers[`OpenNX4_REG_TEST_PIXEL];
 `endif
 								
-								if (temp_pixel_out[12])begin //saturate (you can add 100% of each buffer)
-									temp_pixel_out = 'hfff; 
+								if (temp_pixel_out[`INTERNAL_PIXEL_WIDTH_BITS])begin //saturate (you can add 100% of each buffer)
+									temp_pixel_out = (1<<`INTERNAL_PIXEL_WIDTH_BITS)-1; 
 								end
-								
-								//temp_pixel_out=nx4_registers[`OpenNX4_REG_TEST_PIXEL][7:0];
-								pixel_buf[ agen_pixel_write_reg ][11:0] <= temp_pixel_out[11:0];
+
+`ifdef TEMPORAL_DITHER	//for >12 bit 
+								if (temp_pixel_out[ `INTERNAL_PIXEL_WIDTH_BITS-12 -: `INTERNAL_PIXEL_WIDTH_BITS-12] >= frame_count[`INTERNAL_PIXEL_WIDTH_BITS-12 -: `INTERNAL_PIXEL_WIDTH_BITS-12])
+								begin	//simple PWM off the low bits of the frame count 
+									pixel_buf[ agen_pixel_write_reg ][GRAYSCALE_BITS-1:0] <= temp_pixel_out[`INTERNAL_PIXEL_WIDTH_BITS-1 -:GRAYSCALE_BITS];
+								end
+								else
+								begin
+									pixel_buf[ agen_pixel_write_reg ][GRAYSCALE_BITS-1:0] <= 0;
+								end
+`else
+								pixel_buf[ agen_pixel_write_reg ][GRAYSCALE_BITS-1:0] <= temp_pixel_out[`INTERNAL_PIXEL_WIDTH_BITS-1 -:GRAYSCALE_BITS];
+`endif								
 							end
 								
 						end

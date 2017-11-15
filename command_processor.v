@@ -25,9 +25,9 @@
 `include "nx4_header_file.vh"
 
 module command_processor(
-    //intensity lookup table (12 bit, 256 entries)
+    //intensity lookup table (12/16 bit, 256 entries)
 	 output reg il_wea,	//write enable
-	 output [11:0] il_din,	//write data
+	 output [`INTERNAL_PIXEL_WIDTH_BITS-1:0] il_din,	//write data
 	 output [7:0] il_addr,	//address
 	 
 	 //framebuffers
@@ -312,7 +312,7 @@ module command_processor(
 							case (rx_command_mode)
 								`CP_CMD_MODE_GAMMA: begin
 									if (is_write)begin	//read not supported
-										//write two bytes (msb first) of 12 bit 8b->12b value, so write 512 bytes total
+										//write two bytes (msb first) of 12/16 bit 8b->12/16b value, so write 512 bytes total
 										if (cp_command_addr[0]==0)begin
 											il_msb_latch <= com_rx; //first latch the top few bits 
 											cp_addr_inc_delay<=cmd_data_first_byte_flag;

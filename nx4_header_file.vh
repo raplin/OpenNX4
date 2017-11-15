@@ -12,6 +12,13 @@
 `define DEFAULT_PIXEL_CLOCK_DIVIDER 2  //20mhz/(1<<n) , so 2=1<<2= 20/4=5mhz, which is pretty good
 `define DEFAULT_GSPWM_CLOCK_DIVIDER 0	//20/(1<<n) = 10mhz gsclock
 
+
+`define INTERNAL_PIXEL_WIDTH_BITS 12	//12 or 16 bits per RGB channel. 16 uses temporal dithering, is not fully implemented yet
+//only enable this for >12 bit internal formats
+//`define TEMPORAL_DITHER
+
+//framebuffer is currently 8 bit
+
 //UART speed...
 `define DEFAULT_BAUD_MULTIPLIER 3	// 115200 << n (in this case = 465k)
 //Note with a 40mhz clock (and due to the way it's currently implemented) the actual baud rates will be;

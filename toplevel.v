@@ -250,11 +250,11 @@ module toplevel(
 
 	//ram-based lookup table to convert from 8-bit pixels to 12 bit (due to eye response, 8 bit represents distinguisable tones fine)
 	wire il_wea;
-	wire [11:0] il_dina;
+	wire [`INTERNAL_PIXEL_WIDTH_BITS-1:0] il_dina;
 	wire [7:0] il_addra;
-	wire [11:0] il0_doutb;
+	wire [`INTERNAL_PIXEL_WIDTH_BITS-1:0] il0_doutb;
 	wire [7:0] il0_addrb;
-	wire [11:0] il1_doutb;
+	wire [`INTERNAL_PIXEL_WIDTH_BITS-1:0] il1_doutb;
 	wire [7:0] il1_addrb;
 	wire il_enb=1;
 
