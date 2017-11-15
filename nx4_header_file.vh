@@ -9,11 +9,25 @@
 
 
 /// --- IMPORTANT DEFAULTS ///
-`define DEFAULT_PIXEL_CLOCK_DIVIDER 2  //40mhz/(1<<n) , so 2=1<<2= 40/4=10mhz
-`define DEFAULT_GSPWM_CLOCK_DIVIDER 0	
+`define DEFAULT_PIXEL_CLOCK_DIVIDER 2  //20mhz/(1<<n) , so 2=1<<2= 20/4=5mhz, which is pretty good
+`define DEFAULT_GSPWM_CLOCK_DIVIDER 0	//20/(1<<n) = 10mhz gsclock
 
-`define DEFAULT_BAUD_MULTIPLIER 2	// 115200 << n (in this case = 460k)
+//UART speed...
+`define DEFAULT_BAUD_MULTIPLIER 3	// 115200 << n (in this case = 465k)
+//Note with a 40mhz clock (and due to the way it's currently implemented) the actual baud rates will be;
+/*
+0 115273
+1 231213
+2 465116
+3 930232	  <<ftdi supports 923077 which is close enough
+4 1904761
+5 4000000
+6 8000000  <<supported by highspeed FTDI chips, e.g. FT232H, 2232H
+7 20000000  <<good luck with this
 
+It'd be possible to more closely match FT232H baud rates at high speeds (although 8MBaud is spot on), see 
+http://www.ftdichip.com/Support/Documents/AppNotes/AN_120_Aliasing_VCP_Baud_Rates.pdf
+*/
 
 /// --- DEBUG STUFF
 `define ENABLE_BITBANG_MEMORY 1
@@ -33,7 +47,7 @@
 
 `define DEFAULT_IN_COM_MODE	`COM_MODE_UART
 `define DEFAULT_OUT_COM_MODE	`COM_MODE_UART
-`define DEFAULT_UART_BAUD 115200	//this can be multiplied by 2x, 4x etc with a register setting. 
+`define BASELINE_UART_BAUD 115200	//this can be multiplied by 2x, 4x etc with a register setting. 
 
 ///////////////////////////////////////
 
@@ -81,9 +95,8 @@
 `define  OpenNX4_REG_IOCTL_BIT_AMBER_LED		2	//1=lit
 `define  OpenNX4_REG_IOCTL_BIT_I2C_SCL			3	//1=floating,0=pulled low
 `define  OpenNX4_REG_IOCTL_BIT_I2C_SDA			4	//1=floating,0=pulled low
-//5 spare
-`define  OpenNX4_REG_IOCTL_BIT_UART_BAUD_0		6	//00=115200, 01=115k*2, 10=115k*4, 11=115k*8
-`define  OpenNX4_REG_IOCTL_BIT_UART_BAUD_1		7
+`define  OpenNX4_REG_IOCTL_BIT_UART_BAUD_0		5	//000=115200, 001=115k*2, 010=115k*4, 011=115k*8 ...  111=115k*128=14mbit
+`define  OpenNX4_REG_IOCTL_BIT_UART_BAUD_BITCOUNT 3
 //--
 `define OpenNX4_REG_COMCTL				2
 `define  OpenNX4_REG_COMCTL_BIT_IN_COM_MODE 	0	//3 bits - input format (UART etc)

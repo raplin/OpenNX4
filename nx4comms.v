@@ -247,9 +247,9 @@ begin
  endcase 
 end 
 
-wire [1:0] baud_multiplier;
-assign baud_multiplier=nx4_registers[`OpenNX4_REG_IOCTL][`OpenNX4_REG_IOCTL_BIT_UART_BAUD_1 -:2 ];
-assign uart_baud_rate={0,0,0,0,0,0,0,0,(40000000/`DEFAULT_UART_BAUD) }>>baud_multiplier;		
+wire [`OpenNX4_REG_IOCTL_BIT_UART_BAUD_BITCOUNT-1:0] baud_multiplier;
+assign baud_multiplier=nx4_registers[`OpenNX4_REG_IOCTL][(`OpenNX4_REG_IOCTL_BIT_UART_BAUD_0+`OpenNX4_REG_IOCTL_BIT_UART_BAUD_BITCOUNT)-1 -:`OpenNX4_REG_IOCTL_BIT_UART_BAUD_BITCOUNT ];
+assign uart_baud_rate={0,0,0,0,0,0,0,0,(40000000/`BASELINE_UART_BAUD) }>>baud_multiplier;		
 
 always @(posedge CLK_40 or posedge reset)
 begin

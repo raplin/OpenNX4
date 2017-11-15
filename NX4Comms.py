@@ -26,6 +26,7 @@ import serial,time,threading
 import random
 import sys
 from NX4CommsHeaderReader import NX4
+from VideoSource import VideoSource
 
 try:
     import pygame   #for loading images, not vital
@@ -64,7 +65,8 @@ class IODevice(object):
         time.sleep(t*self.TIME_SCALE)
     
     def sendMessage(self,messageBytes):
-        b="".join([chr(c) for c in messageBytes])
+        if not isinstance(messageBytes,str):
+            messageBytes="".join([chr(d) for d in messageBytes])
         self.startMessage()
         self.sendMessage(b)
         self.stopMessage()
@@ -246,7 +248,8 @@ end
         pass
 
     def sendMessage(self,bytes):
-        bytes="".join([chr(d) for d in bytes])
+        if not isinstance(bytes,str):
+            bytes="".join([chr(d) for d in bytes])
         bytes=self.addPrefix(bytes)
         self.writeRaw(bytes)
 
@@ -330,13 +333,14 @@ class UART(IODevice):
 
     #must be complete message in one call if prefixLength!=0
     def sendMessage(self,bytes):
-        b="".join([chr(c) for c in bytes])
-        b=self.addPrefix(b)
+        if not isinstance(bytes,str):
+            bytes="".join([chr(d) for d in bytes])
+        bytes=self.addPrefix(bytes)
         if self.DEBUG:
             for d in bytes:
                 print ">%02x" % d,
             print ""
-        self.writeRaw(b)
+        self.writeRaw(bytes)
 
     def writeRaw(self,b):
         self.serial.write(b)
@@ -412,6 +416,13 @@ class NX4Connector(object):
         bytes=[ NX4.CP_CMD_MODE_FB | (self.unitID<<NX4.CP_CMD_MODE_BIT_UNIT_ID) | (1<<NX4.CP_CMD_MODE_BIT_WRITE) ,
                 addr&0xff,addr>>8]+values
         self.sendIOMessage(bytes)                
+
+    def writeFBRaw(self,addr,fbBytes):  #takes string of bytes instead of array of ints
+        bytes=[ NX4.CP_CMD_MODE_FB | (self.unitID<<NX4.CP_CMD_MODE_BIT_UNIT_ID) | (1<<NX4.CP_CMD_MODE_BIT_WRITE) ,
+                addr&0xff,addr>>8]
+        bytes="".join([chr(d) for d in bytes])
+        self.sendIOMessage(bytes+fbBytes)                
+
 
     def writeIL(self,addr,values):
         cmode=NX4.CP_CMD_MODE_GAMMA
@@ -1066,7 +1077,61 @@ class OpenNX4(NX4BitbangedI2C):
         if not noWrite:
             self.nx4.writeRegister(NX4.OpenNX4_REG_BITBANG_TEST,[self.bbState])
         
-        
+    #baud stuff
+    def calcClockSettings():
+        baseClk=40000000
+        base=int(baseClk/115200)
+        for div in range(8):
+            actualBaud=baseClk/(base>>div)
+            print div,actualBaud
+
+
+    def testVideoPlayback(self,sourceFile,fps=25):
+        vs=VideoSource(tileW=32,tileH=36,tileArrayW=1,tileArrayH=1,tileIndexX=0,tileIndexY=0)
+        #vs=VideoSource(tileW=32,tileH=36,tileArrayW=3,tileArrayH=3,tileIndexX=1,tileIndexY=1)
+
+        vs.start(sourceFile,fps=fps)
+        fbTarget=0
+        frameCount=0
+        debug=False
+        while True:
+            frame=vs.nextFrame()
+
+            playTime=frameCount/fps
+            print "%02d:%02d:%02d - %06d" % (int(playTime/60),int(playTime%60),(playTime%1)%100,frameCount)
+            frameCount+=1
+
+            
+            #for now, until we get row scan working, duplicate each row 6 times, effectively lowering the vertical res to 6 pixels :-)
+            dupeRows=False
+            if dupeRows:
+                frameOut=""
+                height=36
+                row=0
+                while row<height:
+                    rowData=frame[row*32*3:(row+1)*32*3]
+                    frameOut+=rowData*6
+                    row+=6
+                #endhack
+
+            #it's not very complicated... 
+            self.setFBTarget(1<<fbTarget)
+            frame=[ord(d) for d in frame]
+            self.nx4.writeFB(0,frame)
+
+
+            blend0=0xff if fbTarget==0 else 0
+            blend1=0xff-blend0
+            self.setBufferBlend(blend0,blend1)
+
+            fbTarget^=1
+            
+
+            if debug:
+                for n in range(16):
+                    m=n*3
+                    print "%02x%02x%02x" % (ord(frame[m]),ord(frame[m+1]),ord(frame[m+2])),
+                print ""
 
         
 
@@ -1344,8 +1409,9 @@ if test=="spi":
 
 if test=="uart":
     o=OpenNX4(simulate=simulate)
+
     
-    brightness=10  #goes up to 63.. BE CAREFUL b/c we haven't got row scanning running, keep this low (say <20) or you may overheat the single row LEDs
+    brightness=5  #goes up to 63.. BE CAREFUL b/c we haven't got row scanning running, keep this low (say <20) or you may overheat the single row LEDs
     #o.testILWrite()
     o.setPixelClock(2,0)
     o.loadDotCorrect(brightness)    #load all pixels w/same dotcorrect value
@@ -1360,14 +1426,17 @@ if test=="uart":
             #o.testFlashPowerLED()   #'hello world!'
             #o.testWriteFB()
             #o.testSetupFill()
-            o.testImageDisplay()
+            #o.testImageDisplay()
+
+            #anything ffmpeg will play..
+            o.testVideoPlayback("../../media/test.mkv",fps=23.976215)
             #o.ioDevice.stop=True
             #o.testDotCorrectLoad()
             
             #this is a great speed for actual use, 5mhz pixel clock
             #which is only 695us for a whole frame (1438fps)
             
-            o.testFBBlending()
+            #o.testFBBlending()
         
             #o.testWriteTestPixel()
             #o.testI2C()
