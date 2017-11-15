@@ -1,0 +1,219 @@
+Release 14.5 Map P.58f (nt)
+Xilinx Mapping Report File for Design 'blk_mem_gen_v7_3'
+
+Design Information
+------------------
+Command Line   : map -intstyle ise -p xc3s250e-tq144-5 -cm area -ir off -pr off
+-c 100 -o blk_mem_gen_v7_3_map.ncd blk_mem_gen_v7_3.ngd blk_mem_gen_v7_3.pcf 
+Target Device  : xc3s250e
+Target Package : tq144
+Target Speed   : -5
+Mapper Version : spartan3e -- $Revision: 1.55 $
+Mapped Date    : Fri Oct 27 05:02:00 2017
+
+Design Summary
+--------------
+Number of errors   :   1
+Number of warnings :  48
+
+Section 1 - Errors
+------------------
+ERROR:Pack:198 - NCD was not produced.  All logic was removed from the design. 
+   This is usually due to having no input or output PAD connections in the
+   design and no nets or symbols marked as 'SAVE'.  You can either add PADs or
+   'SAVE' attributes to the design, or run 'map -u' to disable logic trimming in
+   the mapper.  For more information on trimming issues search the Xilinx
+   Answers database for "ERROR:Pack:198" and read the Master Answer Record for
+   MAP Trimming Issues.
+
+Section 2 - Warnings
+--------------------
+WARNING:MapLib:701 - Signal clka connected to top level port clka has been
+   removed.
+WARNING:MapLib:701 - Signal wea<0> connected to top level port wea<0> has been
+   removed.
+WARNING:MapLib:701 - Signal clkb connected to top level port clkb has been
+   removed.
+WARNING:MapLib:701 - Signal rstb connected to top level port rstb has been
+   removed.
+WARNING:MapLib:701 - Signal addra<9> connected to top level port addra<9> has
+   been removed.
+WARNING:MapLib:701 - Signal addra<8> connected to top level port addra<8> has
+   been removed.
+WARNING:MapLib:701 - Signal addra<7> connected to top level port addra<7> has
+   been removed.
+WARNING:MapLib:701 - Signal addra<6> connected to top level port addra<6> has
+   been removed.
+WARNING:MapLib:701 - Signal addra<5> connected to top level port addra<5> has
+   been removed.
+WARNING:MapLib:701 - Signal addra<4> connected to top level port addra<4> has
+   been removed.
+WARNING:MapLib:701 - Signal addra<3> connected to top level port addra<3> has
+   been removed.
+WARNING:MapLib:701 - Signal addra<2> connected to top level port addra<2> has
+   been removed.
+WARNING:MapLib:701 - Signal addra<1> connected to top level port addra<1> has
+   been removed.
+WARNING:MapLib:701 - Signal addra<0> connected to top level port addra<0> has
+   been removed.
+WARNING:MapLib:701 - Signal addrb<9> connected to top level port addrb<9> has
+   been removed.
+WARNING:MapLib:701 - Signal addrb<8> connected to top level port addrb<8> has
+   been removed.
+WARNING:MapLib:701 - Signal addrb<7> connected to top level port addrb<7> has
+   been removed.
+WARNING:MapLib:701 - Signal addrb<6> connected to top level port addrb<6> has
+   been removed.
+WARNING:MapLib:701 - Signal addrb<5> connected to top level port addrb<5> has
+   been removed.
+WARNING:MapLib:701 - Signal addrb<4> connected to top level port addrb<4> has
+   been removed.
+WARNING:MapLib:701 - Signal addrb<3> connected to top level port addrb<3> has
+   been removed.
+WARNING:MapLib:701 - Signal addrb<2> connected to top level port addrb<2> has
+   been removed.
+WARNING:MapLib:701 - Signal addrb<1> connected to top level port addrb<1> has
+   been removed.
+WARNING:MapLib:701 - Signal addrb<0> connected to top level port addrb<0> has
+   been removed.
+WARNING:MapLib:701 - Signal dina<11> connected to top level port dina<11> has
+   been removed.
+WARNING:MapLib:701 - Signal dina<10> connected to top level port dina<10> has
+   been removed.
+WARNING:MapLib:701 - Signal dina<9> connected to top level port dina<9> has been
+   removed.
+WARNING:MapLib:701 - Signal dina<8> connected to top level port dina<8> has been
+   removed.
+WARNING:MapLib:701 - Signal dina<7> connected to top level port dina<7> has been
+   removed.
+WARNING:MapLib:701 - Signal dina<6> connected to top level port dina<6> has been
+   removed.
+WARNING:MapLib:701 - Signal dina<5> connected to top level port dina<5> has been
+   removed.
+WARNING:MapLib:701 - Signal dina<4> connected to top level port dina<4> has been
+   removed.
+WARNING:MapLib:701 - Signal dina<3> connected to top level port dina<3> has been
+   removed.
+WARNING:MapLib:701 - Signal dina<2> connected to top level port dina<2> has been
+   removed.
+WARNING:MapLib:701 - Signal dina<1> connected to top level port dina<1> has been
+   removed.
+WARNING:MapLib:701 - Signal dina<0> connected to top level port dina<0> has been
+   removed.
+WARNING:MapLib:701 - Signal doutb<11> connected to top level port doutb<11> has
+   been removed.
+WARNING:MapLib:701 - Signal doutb<10> connected to top level port doutb<10> has
+   been removed.
+WARNING:MapLib:701 - Signal doutb<9> connected to top level port doutb<9> has
+   been removed.
+WARNING:MapLib:701 - Signal doutb<8> connected to top level port doutb<8> has
+   been removed.
+WARNING:MapLib:701 - Signal doutb<7> connected to top level port doutb<7> has
+   been removed.
+WARNING:MapLib:701 - Signal doutb<6> connected to top level port doutb<6> has
+   been removed.
+WARNING:MapLib:701 - Signal doutb<5> connected to top level port doutb<5> has
+   been removed.
+WARNING:MapLib:701 - Signal doutb<4> connected to top level port doutb<4> has
+   been removed.
+WARNING:MapLib:701 - Signal doutb<3> connected to top level port doutb<3> has
+   been removed.
+WARNING:MapLib:701 - Signal doutb<2> connected to top level port doutb<2> has
+   been removed.
+WARNING:MapLib:701 - Signal doutb<1> connected to top level port doutb<1> has
+   been removed.
+WARNING:MapLib:701 - Signal doutb<0> connected to top level port doutb<0> has
+   been removed.
+
+Section 3 - Informational
+-------------------------
+INFO:LIT:243 - Logical network doutb<0> has no load.
+INFO:LIT:395 - The above info message is repeated 11 more times for the
+   following (max. 5 shown):
+   doutb<1>,
+   doutb<2>,
+   doutb<3>,
+   doutb<4>,
+   doutb<5>
+   To see the details of these info messages, please use the -detail switch.
+INFO:MapLib:562 - No environment variables are currently set.
+
+Section 4 - Removed Logic Summary
+---------------------------------
+   3 block(s) removed
+  50 signal(s) removed
+
+Section 5 - Removed Logic
+-------------------------
+
+The trimmed logic report below shows the logic removed from your design due to
+sourceless or loadless signals, and VCC or ground connections.  If the removal
+of a signal or symbol results in the subsequent removal of an additional signal
+or symbol, the message explaining that second removal will be indented.  This
+indentation will be repeated as a chain of related logic is removed.
+
+To quickly locate the original cause for the removal of a chain of logic, look
+above the place where that logic is listed in the trimming report, then locate
+the lines that are least indented (begin at the leftmost edge).
+
+The signal "doutb<0>" is loadless and has been removed.
+The signal "doutb<1>" is loadless and has been removed.
+The signal "doutb<2>" is loadless and has been removed.
+The signal "doutb<3>" is loadless and has been removed.
+The signal "doutb<4>" is loadless and has been removed.
+The signal "doutb<5>" is loadless and has been removed.
+The signal "doutb<6>" is loadless and has been removed.
+The signal "doutb<7>" is loadless and has been removed.
+The signal "doutb<8>" is loadless and has been removed.
+The signal "doutb<9>" is loadless and has been removed.
+The signal "doutb<10>" is loadless and has been removed.
+The signal "doutb<11>" is loadless and has been removed.
+The signal "clkb" is sourceless and has been removed.
+The signal "clka" is sourceless and has been removed.
+The signal "addrb<0>" is sourceless and has been removed.
+The signal "addrb<1>" is sourceless and has been removed.
+The signal "addrb<2>" is sourceless and has been removed.
+The signal "addrb<3>" is sourceless and has been removed.
+The signal "addrb<4>" is sourceless and has been removed.
+The signal "addrb<5>" is sourceless and has been removed.
+The signal "addrb<6>" is sourceless and has been removed.
+The signal "addrb<7>" is sourceless and has been removed.
+The signal "addrb<8>" is sourceless and has been removed.
+The signal "addrb<9>" is sourceless and has been removed.
+The signal "rstb" is sourceless and has been removed.
+The signal "dina<0>" is sourceless and has been removed.
+The signal "dina<1>" is sourceless and has been removed.
+The signal "dina<2>" is sourceless and has been removed.
+The signal "dina<3>" is sourceless and has been removed.
+The signal "dina<4>" is sourceless and has been removed.
+The signal "dina<5>" is sourceless and has been removed.
+The signal "dina<6>" is sourceless and has been removed.
+The signal "dina<7>" is sourceless and has been removed.
+The signal "dina<8>" is sourceless and has been removed.
+The signal "dina<9>" is sourceless and has been removed.
+The signal "dina<10>" is sourceless and has been removed.
+The signal "dina<11>" is sourceless and has been removed.
+The signal "addra<0>" is sourceless and has been removed.
+The signal "addra<1>" is sourceless and has been removed.
+The signal "addra<2>" is sourceless and has been removed.
+The signal "addra<3>" is sourceless and has been removed.
+The signal "addra<4>" is sourceless and has been removed.
+The signal "addra<5>" is sourceless and has been removed.
+The signal "addra<6>" is sourceless and has been removed.
+The signal "addra<7>" is sourceless and has been removed.
+The signal "addra<8>" is sourceless and has been removed.
+The signal "addra<9>" is sourceless and has been removed.
+The signal "wea<0>" is sourceless and has been removed.
+
+The trimmed logic reported below is either:
+   1. part of a cycle
+   2. part of disabled logic
+   3. a side-effect of other trimmed logic
+
+The signal "N0" is unused and has been removed.
+ Unused block "XST_VCC" (ONE) removed.
+The signal "N1" is unused and has been removed.
+ Unused block "XST_GND" (ZERO) removed.
+Unused block
+"U0/xst_blk_mem_generator/gnativebmg.native_blk_mem_gen/valid.cstr/ramloop[0].ra
+m.r/s3_noinit.ram/dpram.dp18x18.ram" (RAMB16_S18_S18) removed.

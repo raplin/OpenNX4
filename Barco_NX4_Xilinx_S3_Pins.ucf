@@ -1,0 +1,119 @@
+//////////////////////////////////////////////////////////////////////////////////
+// OpenNX4 - Open source firmware for Barco NX4 tiles
+// Company: Bohemian Bits
+// Engineer: Richard Aplin (Twitter: @DrTune)
+// Copyright (C) 2017 Richard Aplin
+// Released under the Attribution-NonCommercial 2.0 Generic (CC BY-NC 2.0)
+// You may not use this code or a derived work for commercial purposes unless you have a commercial license, contact drtune@gmail.com
+//////////////////////////////////////////////////////////////////////////////////
+
+// Barco NX-4 Xilin pinouts; credit to Hackaday posse
+// https://hackaday.io/project/27799-barco-nx-4-group-reversing-adventure
+NET "led_l_sin[1]" LOC = P2; //m101 test point
+NET "led_l_sin[2]" LOC = P3;
+NET "led_l_sin[3]" LOC = P4;
+NET "led_r_sin[1]" LOC = P5;
+//P6 is input ?
+NET "led_r_sin[2]" LOC = P7;
+NET "led_r_sin[3]" LOC = P8;
+NET "led_xerr" 	 LOC = P10;	
+NET "led_l_sin[4]" LOC = P14;
+NET "led_l_sin[5]" LOC = P15;
+NET "led_l_sin[6]" LOC = P16;
+NET "led_r_sin[4]" LOC = P17;
+NET "led_r_sin[5]" LOC = P20;
+NET "led_r_sin[6]" LOC = P21;
+NET "led_cal_sin"  LOC = P22;
+NET "cpld_p44" 	 LOC=P23;
+NET "cpld_p6" 		 LOC=P24;	//m102 test point - looks like pixel shifter data back?
+NET "i2c_scl" 		 LOC = P25;
+NET "i2c_sda" 		 LOC = P26;
+NET "sram_ce"		 LOC = P31;
+NET "led_xlat" 	 LOC = P32; //m103 test point
+NET "led_mode" 	 LOC = P33; //m104 tp
+NET "led_blank" 	 LOC = P34;	//m105 tp
+NET "sram_oe" 	 	 LOC = P35;
+NET "lt1933_enable" LOC = P39;
+NET "sram_bhe" 	 LOC = P43;
+NET "sram_ble" 	 LOC = P44;
+
+NET "mem_s7_15_f7" LOC = P50;
+NET "mem_s6_14_f6" LOC = P51;
+NET "mem_s5_13_f5" LOC = P52;
+NET "mem_s4_12_f4" LOC = P53;
+NET "mem_s3_11_f3" LOC = P54;
+NET "mem_s2_10_f2" LOC = P58;
+NET "mem_s1_9_f1"  LOC = P59;
+NET "led_yellow"   LOC = P60;
+NET "led_red" 	    LOC = P62;	//;on a test point
+NET "mem_s0_8_f0"  LOC = P63;
+NET "mem_fa19"  	LOC = P66;
+NET "mem_fa18"  	LOC = P67;
+NET "mem_fa17"  	LOC = P68;
+NET "mem_sa17_fa16" LOC=P70;
+NET "led_orange" 	LOC=P71;
+NET "mem_sa16_fa15" LOC=P74;
+
+NET "mem_sa15_fa14" LOC=P75;
+NET "mem_sa14_fa13" LOC=P76;
+NET "mem_sa13_fa12" LOC=P77;
+NET "mem_sa12_fa11" LOC=P81;
+NET "mem_sa11_fa10" LOC=P82;
+NET "flash_reset" LOC=P83;
+NET "mem_sa10_fa9" LOC=P85;
+NET "mem_sa9_fa8" LOC=P86;
+NET "mem_sa8_fa7" LOC=P87;
+NET "mem_sa7_fa6" LOC=P88;
+NET "mem_sa6_fa5" LOC=P91;
+NET "mem_sa5_fa4" LOC=P92;
+NET "mem_sa4_fa3" LOC=P93;
+NET "mem_sa3_fa2" LOC=P94;
+NET "mem_sa2_fa1" LOC=P96;
+NET "mem_sa1_fa0" LOC=P97;
+NET "mem_sa0_f15" LOC=P98;
+
+NET "mem_we" LOC=P103;
+NET "flash_ce" LOC=P104;
+NET "flash_oe" LOC=P105;
+NET "flash_ry_by" LOC=P107;
+
+NET "fan_tachometer" LOC=P111;
+
+NET "in_conn_p5" LOC=P112;
+NET "in_conn_p4" LOC=P113;
+NET "in_conn_p7" LOC=P116;
+NET "in_conn_p2" LOC=P117;
+NET "in_conn_p8" LOC=P119;
+NET "in_conn_p3" LOC=P120;
+
+NET "cpld_p8" LOC=P123;
+NET "cpld_p3" LOC=P124;
+NET "cpld_p2" LOC=P125;
+NET "cpld_p5" LOC=P136;
+
+NET "out_conn_p5" LOC=P128;
+NET "out_conn_p8" LOC=P129;
+NET "out_conn_p7" LOC=P130;
+NET "out_conn_p4" LOC=P131;
+NET "cpld_p43" 	LOC=P132;
+NET "out_conn_p3" LOC=P134;
+NET "out_conn_p6" LOC=P135;
+
+NET "led_sclk"		 LOC = P139; //M106
+NET "led_gsclk" LOC = P140;  //buffered on M107 tp
+
+NET "clock" LOC = P56;
+NET "clock" IOSTANDARD = LVCMOS25;   //40mhz xtal on board
+NET "cpld_p42" LOC=P142;
+NET "cpld_p41" LOC=P143;
+
+//m108 test point vccaux
+
+// Missing:
+// Fan control on/off? (apparantly not; controlled by temp sensor)
+// 
+
+    
+
+
+

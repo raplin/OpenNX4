@@ -1,0 +1,130 @@
+Release 14.5 Map P.58f (nt)
+Xilinx Map Application Log File for Design 'blk_mem_gen_v7_3'
+
+Design Information
+------------------
+Command Line   : map -intstyle ise -p xc3s250e-tq144-5 -cm area -ir off -pr off
+-c 100 -o blk_mem_gen_v7_3_map.ncd blk_mem_gen_v7_3.ngd blk_mem_gen_v7_3.pcf 
+Target Device  : xc3s250e
+Target Package : tq144
+Target Speed   : -5
+Mapper Version : spartan3e -- $Revision: 1.55 $
+Mapped Date    : Fri Oct 27 05:02:00 2017
+
+Mapping design into LUTs...
+WARNING:MapLib:701 - Signal clka connected to top level port clka has been
+   removed.
+WARNING:MapLib:701 - Signal wea<0> connected to top level port wea<0> has been
+   removed.
+WARNING:MapLib:701 - Signal clkb connected to top level port clkb has been
+   removed.
+WARNING:MapLib:701 - Signal rstb connected to top level port rstb has been
+   removed.
+WARNING:MapLib:701 - Signal addra<9> connected to top level port addra<9> has
+   been removed.
+WARNING:MapLib:701 - Signal addra<8> connected to top level port addra<8> has
+   been removed.
+WARNING:MapLib:701 - Signal addra<7> connected to top level port addra<7> has
+   been removed.
+WARNING:MapLib:701 - Signal addra<6> connected to top level port addra<6> has
+   been removed.
+WARNING:MapLib:701 - Signal addra<5> connected to top level port addra<5> has
+   been removed.
+WARNING:MapLib:701 - Signal addra<4> connected to top level port addra<4> has
+   been removed.
+WARNING:MapLib:701 - Signal addra<3> connected to top level port addra<3> has
+   been removed.
+WARNING:MapLib:701 - Signal addra<2> connected to top level port addra<2> has
+   been removed.
+WARNING:MapLib:701 - Signal addra<1> connected to top level port addra<1> has
+   been removed.
+WARNING:MapLib:701 - Signal addra<0> connected to top level port addra<0> has
+   been removed.
+WARNING:MapLib:701 - Signal addrb<9> connected to top level port addrb<9> has
+   been removed.
+WARNING:MapLib:701 - Signal addrb<8> connected to top level port addrb<8> has
+   been removed.
+WARNING:MapLib:701 - Signal addrb<7> connected to top level port addrb<7> has
+   been removed.
+WARNING:MapLib:701 - Signal addrb<6> connected to top level port addrb<6> has
+   been removed.
+WARNING:MapLib:701 - Signal addrb<5> connected to top level port addrb<5> has
+   been removed.
+WARNING:MapLib:701 - Signal addrb<4> connected to top level port addrb<4> has
+   been removed.
+WARNING:MapLib:701 - Signal addrb<3> connected to top level port addrb<3> has
+   been removed.
+WARNING:MapLib:701 - Signal addrb<2> connected to top level port addrb<2> has
+   been removed.
+WARNING:MapLib:701 - Signal addrb<1> connected to top level port addrb<1> has
+   been removed.
+WARNING:MapLib:701 - Signal addrb<0> connected to top level port addrb<0> has
+   been removed.
+WARNING:MapLib:701 - Signal dina<11> connected to top level port dina<11> has
+   been removed.
+WARNING:MapLib:701 - Signal dina<10> connected to top level port dina<10> has
+   been removed.
+WARNING:MapLib:701 - Signal dina<9> connected to top level port dina<9> has been
+   removed.
+WARNING:MapLib:701 - Signal dina<8> connected to top level port dina<8> has been
+   removed.
+WARNING:MapLib:701 - Signal dina<7> connected to top level port dina<7> has been
+   removed.
+WARNING:MapLib:701 - Signal dina<6> connected to top level port dina<6> has been
+   removed.
+WARNING:MapLib:701 - Signal dina<5> connected to top level port dina<5> has been
+   removed.
+WARNING:MapLib:701 - Signal dina<4> connected to top level port dina<4> has been
+   removed.
+WARNING:MapLib:701 - Signal dina<3> connected to top level port dina<3> has been
+   removed.
+WARNING:MapLib:701 - Signal dina<2> connected to top level port dina<2> has been
+   removed.
+WARNING:MapLib:701 - Signal dina<1> connected to top level port dina<1> has been
+   removed.
+WARNING:MapLib:701 - Signal dina<0> connected to top level port dina<0> has been
+   removed.
+WARNING:MapLib:701 - Signal doutb<11> connected to top level port doutb<11> has
+   been removed.
+WARNING:MapLib:701 - Signal doutb<10> connected to top level port doutb<10> has
+   been removed.
+WARNING:MapLib:701 - Signal doutb<9> connected to top level port doutb<9> has
+   been removed.
+WARNING:MapLib:701 - Signal doutb<8> connected to top level port doutb<8> has
+   been removed.
+WARNING:MapLib:701 - Signal doutb<7> connected to top level port doutb<7> has
+   been removed.
+WARNING:MapLib:701 - Signal doutb<6> connected to top level port doutb<6> has
+   been removed.
+WARNING:MapLib:701 - Signal doutb<5> connected to top level port doutb<5> has
+   been removed.
+WARNING:MapLib:701 - Signal doutb<4> connected to top level port doutb<4> has
+   been removed.
+WARNING:MapLib:701 - Signal doutb<3> connected to top level port doutb<3> has
+   been removed.
+WARNING:MapLib:701 - Signal doutb<2> connected to top level port doutb<2> has
+   been removed.
+WARNING:MapLib:701 - Signal doutb<1> connected to top level port doutb<1> has
+   been removed.
+WARNING:MapLib:701 - Signal doutb<0> connected to top level port doutb<0> has
+   been removed.
+Running directed packing...
+Running delay-based LUT packing...
+Running related packing...
+Updating timing models...
+ERROR:Pack:198 - NCD was not produced.  All logic was removed from the design. 
+   This is usually due to having no input or output PAD connections in the
+   design and no nets or symbols marked as 'SAVE'.  You can either add PADs or
+   'SAVE' attributes to the design, or run 'map -u' to disable logic trimming in
+   the mapper.  For more information on trimming issues search the Xilinx
+   Answers database for "ERROR:Pack:198" and read the Master Answer Record for
+   MAP Trimming Issues.
+
+Mapping completed.
+See MAP report file "blk_mem_gen_v7_3_map.mrp" for details.
+Problem encountered during the packing phase.
+
+Design Summary
+--------------
+Number of errors   :   1
+Number of warnings :  48

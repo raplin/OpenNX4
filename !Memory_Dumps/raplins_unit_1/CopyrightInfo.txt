@@ -1,0 +1,3 @@
+Note the Parallel Flash Dump file contains the regular Barco Xilinx bitstream, and is Copyright Barco
+If anyone objects I will remove this file.
+Thanks to Barco for making such nice (and expensively built!) hardware.
