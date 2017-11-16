@@ -31,7 +31,7 @@ Additionally the OpenNX4 firmware has support for
 Resources
 --------
 Much project info can be found on two other resources;
-The [Hackaday Project page](hackaday.io/project/27799-barco-nx-4-reversing-adventure) is a the main resource, and is where you should go to read much more about this tile, how to program it, and meet some great folks.
+The [Hackaday Project page](https://hackaday.io/project/27799-barco-nx-4-reversing-adventure) is a the main resource, and is where you should go to read much more about this tile, how to program it, and meet some great folks.
 A [Google doc](https://docs.google.com/document/d/1jUVEgcwudxltnb_0Td4SBvetes3Vr6FILnSM_tLnx6o/edit?usp=sharing) I started (older, tech notes)
 There is also [a bunch of PCB pr0n](https://drive.google.com/drive/folders/0B78sx1JgISTYa2lyWG83ejhvX1E?usp=sharing)
 
@@ -90,7 +90,10 @@ Howto
 ----
 This is yet to be written. 
 Quick hint; 
-* connect your 3v3 UART TX via a 100ohm resistor to Pin 8 on the input (male) connector, RX to Pin 5, and GND to (whatever the gnd is, see hackaday page). 
+* connect your:
+    * 3v3 UART TX via a 100ohm resistor to Pin 4 on the input (male) connector, 
+    * UART RX (data from tile) to Pin 5
+    * GND to (whatever the gnd is, see hackaday page). 
 * power up the tile
 * see !Precompiled_Binaries\V0.1
 * load the "test_pattern_boot.svf" bitstream. This should make wild stripy colors appear. 
