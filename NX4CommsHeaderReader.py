@@ -1,19 +1,18 @@
+# coding=utf-8
 import re
 
+
 class NX4CommsHeaderReaderClass(object):
-    def __init__(self,file="nx4_header_file.vh"):
-        defines={}
-        with open(file,"rt") as f:
+    def __init__(self, file="nx4_header_file.vh"):
+        with open(file, "r") as f:
             for l in f.readlines():
-                m=re.match(r"`define\s+(\w+)\s+(\d+)",l)
+                m = re.match(r"`define\s+(\w+)\s+(\d+)", l)
                 if m:
-                    defName=m.group(1)
-                    #only simple integers supported!
-                    defVal=int(m.group(2))
-                    #print defName,defVal
-                    self.__dict__[defName]=defVal
+                    defName = m.group(1)
+                    # only simple integers supported!
+                    defVal = int(m.group(2))
+                    # print(defName,defVal)
+                    self.__dict__[defName] = defVal
 
 
-
-                    
-NX4=NX4CommsHeaderReaderClass()
+NX4 = NX4CommsHeaderReaderClass()

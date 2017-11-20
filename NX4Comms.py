@@ -1,3 +1,4 @@
+# coding=utf-8
 """
 //////////////////////////////////////////////////////////////////////////////////
 // OpenNX4 - Open source firmware for Barco NX4 tiles
@@ -21,133 +22,144 @@ I suggest you use 100-ohm resistor on the TX (input to NX4) pin
 
 
 """
-import argparse,struct,Queue
-import serial,time,threading
+from __future__ import print_function, division
+
 import random
 import sys
+import threading
+import time
+
+import serial
+from PIL.XVThumbImagePlugin import b
+
 from NX4CommsHeaderReader import NX4
 from VideoSource import VideoSource
 
+try:  # python3
+    import queue
+except ImportError:  # python2
+    import Queue as queue
+
 try:
-    import pygame   #for loading images, not vital
+    import pygame  # for loading images, not vital
+
     pygame.init()
-    HAS_PYGAME=True
-except:
-    HAS_PYGAME=False
+    HAS_PYGAME = True
+except ImportError:
+    HAS_PYGAME = False
 
-#DOT_CORRECT_DEFAULT=1 #5  #6 bit value
+# DOT_CORRECT_DEFAULT=1 #5  #6 bit value
 
-DEFAULT_COM_PORT="/dev/ttyUSB0"  #use a COM if on windows
+DEFAULT_COM_PORT = "/dev/ttyUSB0"  # use a COM if on windows
 
-BAUD=115200<<NX4.DEFAULT_BAUD_MULTIPLIER
-print BAUD,"baud"
-BREAK_TIME_BITS=15
+BAUD = 115200 << NX4.DEFAULT_BAUD_MULTIPLIER
+print("{} baud".format(BAUD))
+BREAK_TIME_BITS = 15
 
-SIM_SCRIPT_FOLDER="test_scripts_gen/"
-SIM_TEST_FILE="openNX4_toplevel_test_autogen"
+SIM_SCRIPT_FOLDER = "test_scripts_gen/"
+SIM_TEST_FILE = "openNX4_toplevel_test_autogen"
 
 random.seed(0)
+
 
 class ReadTimeout(Exception):
     pass
 
-#/////////////////////////////////////////////////
+
+# /////////////////////////////////////////////////
 class IODevice(object):
-    TIME_SCALE=1.0
-    SIMULATION=False
+    TIME_SCALE = 1.0
+    SIMULATION = False
 
     def __init__(self):
-        self.prefixLength=1 #default in the hw to a 1 byte length prefix
-        self.sendFlush=True
-        self.stop=False
+        self.prefixLength = 1  # default in the hw to a 1 byte length prefix
+        self.sendFlush = True
+        self.stop = False
 
-    def sleep(self,t):
-        time.sleep(t*self.TIME_SCALE)
-    
-    def sendMessage(self,messageBytes):
-        if not isinstance(messageBytes,str):
-            messageBytes="".join([chr(d) for d in messageBytes])
+    def sleep(self, t):
+        time.sleep(t * self.TIME_SCALE)
+
+    def sendMessage(self, messageBytes):
+        if not isinstance(messageBytes, str):
+            messageBytes = "".join([chr(d) for d in messageBytes])
         self.startMessage()
         self.sendMessage(b)
         self.stopMessage()
 
-    def addPrefix(self,b):
-        l=len(b)
-        if l==0:
+    def addPrefix(self, b):
+        l = len(b)
+        if l == 0:
             raise Exception("Zero length message")
-        l-=1
-        if self.prefixLength==1:
-            if l>255:
-                raise Exception("Message too long for this mode (%d) use larger lengthPrefix" % l)
-            b=chr(l&0xff)+b
-        elif self.prefixLength==2:
-            if l>65535:
-                raise Exception("Message too long for this mode (%d)" % l)
-            b=chr(l>>8)+chr(l&0xff)+b
+        l -= 1
+        if self.prefixLength == 1:
+            if l > 255:
+                raise Exception("Message too long for this mode ({:d}) use larger lengthPrefix".format(l))
+            b = chr(l & 0xff) + b
+        elif self.prefixLength == 2:
+            if l > 65535:
+                raise Exception("Message too long for this mode ({:d})".format(l))
+            b = chr(l >> 8) + chr(l & 0xff) + b
         return b
-        
 
-    def setSimulationName(self,name):
-        self.simulationName=name
-        
-    def setLengthPrefix(self,prefixLength):
-        self.prefixLength=prefixLength
+    def setSimulationName(self, name):
+        self.simulationName = name
+
+    def setLengthPrefix(self, prefixLength):
+        self.prefixLength = prefixLength
 
     def sendBreak(self):
         pass
 
     def flushComms(self):
-        self.sendFlush=False
+        self.sendFlush = False
         self.sendBreak()
 
-#//////////////////////////////////////////////////////
+
+# //////////////////////////////////////////////////////
 
 class VerilogTestGenBase(IODevice):
-    TIME_SCALE=0.0001
-    SIMULATION=True
-    MAX_SIM_WRITES=5000
+    TIME_SCALE = 0.0001
+    SIMULATION = True
+    MAX_SIM_WRITES = 5000
 
-    PREFIX=""
-    SUFFIX=""
-    
-    def __init__(self,deviceParams):
+    PREFIX = ""
+    SUFFIX = ""
+
+    def __init__(self, deviceParams):
         IODevice.__init__(self)
-        self.simulationName="unknown"  #this is not known till after init and is written in
-        self.deviceParams=deviceParams
+        self.simulationName = "unknown"  # this is not known till after init and is written in
+        self.deviceParams = deviceParams
 
-    def sleep(self,t):
-        #todo! insert delay into simulation
-        pass 
-        
+    def sleep(self, t):
+        # todo! insert delay into simulation
+        pass
+
     def openTransport(self):
-        self.tests=[]
-        
+        self.tests = []
+
     def closeTransport(self):
-        fileName="%s%s.v" % (self.SIMULATION_NAME_PREFIX,self.simulationName)
-        filePath=SIM_SCRIPT_FOLDER+fileName
-        with open(filePath, "wt") as f:
+        fileName = "{}{}.v".format(self.SIMULATION_NAME_PREFIX, self.simulationName)
+        filePath = SIM_SCRIPT_FOLDER + fileName
+        with open(filePath, "w") as f:
             f.write(self.PREFIX)
-            tests="\n".join(self.tests)
-            f.write( "\n// *** AUTOGENERATED DO NOT EDIT : %s *** \n\n" % filePath)
-            f.write( tests )
+            tests = "\n".join(self.tests)
+            f.write("\n// *** AUTOGENERATED DO NOT EDIT : {} *** \n\n".format(filePath))
+            f.write(tests)
             f.write(self.SUFFIX)
-            #print "\n\n\n\n\n",tests
-        print "Wrote ISE test script ",filePath
-        
-    def writeSim(self,test):
-        self.tests+=[test]
-        if len(self.tests)==self.MAX_SIM_WRITES:
-            self.stop=True
+            print("\n\n\n\n\n{}".format(tests))
+        print("Wrote ISE test script {}".format(filePath))
+
+    def writeSim(self, test):
+        self.tests += [test]
+        if len(self.tests) == self.MAX_SIM_WRITES:
+            self.stop = True
 
 
-        
-
-
-#/////////////////////////////////////////////
+# /////////////////////////////////////////////
 
 class SPISimulation(VerilogTestGenBase):
-    SIMULATION_NAME_PREFIX="spi_"
-    PREFIX="""
+    SIMULATION_NAME_PREFIX = "spi_"
+    PREFIX = """
 always begin:test
 integer i;
 `define SPICLK2 100
@@ -157,985 +169,929 @@ integer i;
 #400 cs=1;
     """
 
-    SUFFIX="""
+    SUFFIX = """
 //end of test
 end
 """
-    WIDTH=8
-    
-    def assertCS(self,active):
-        self.writeSim("#`SPICLK2 `cs=%d;" % (1-active))
+    WIDTH = 8
 
-    def mosiSPIByte(self,value):
-        self.writeSim("for(i=%d;i>=0;i=i-1) begin" % (self.WIDTH-1) )
-        self.writeSim("#`SPICLK2 `mosi=(%d >> i)&1; `sck=1; #`SPICLK2 `sck=0; " % (value) )
+    def assertCS(self, active):
+        self.writeSim("#`SPICLK2 `cs={:d};".format(1 - active))
+
+    def mosiSPIByte(self, value):
+        self.writeSim("for(i={:d};i>=0;i=i-1) begin".format(self.WIDTH - 1))
+        self.writeSim("#`SPICLK2 `mosi=({:d} >> i)&1; `sck=1; #`SPICLK2 `sck=0; ".format(value))
         self.writeSim("end")
 
-    def misoSPIByte(self,value):
-        self.writeSim("tx_data=8'd%d; tx_data_strobe=1; " % (value) )
-        
+    def misoSPIByte(self, value):
+        self.writeSim("tx_data=8'd{:d}; tx_data_strobe=1; ".format(value))
 
-    def mosiSPI(self,data):
+    def mosiSPI(self, data):
         for d in data:
             self.mosiSPIByte(ord(d))
 
-    def misoSPI(self,data):
+    def misoSPI(self, data):
         for d in data:
             self.misoSPIByte(ord(d))
-    
+
     def startMessage(self):
-        if self.prefixLength==0:
+        if self.prefixLength == 0:
             self.assertCS(1)
 
     def stopMessage(self):
         self.assertCS(0)
 
-    def sendMessage(self,bytes):
-        #self.misoSPI(chr(0x8a))
-        bytes=self.addPrefix(bytes)
+    def sendMessage(self, bytes):
+        # self.misoSPI(chr(0x8a))
+        bytes = self.addPrefix(bytes)
         self.mosiSPI(bytes)
 
-    
 
-#/////////////////////////////////////////////
-
+# /////////////////////////////////////////////
 
 
 class UARTSimulation(VerilogTestGenBase):
+    SIMULATION_NAME_PREFIX = "uart_"
 
-    SIMULATION_NAME_PREFIX="uart_"
-
-
-    PREFIX="""
+    PREFIX = """
 always begin:test
 integer i;
-`define UARTCLK %d
-`define BREAKCLK %d
+`define UARTCLK {:d}
+`define BREAKCLK {:d}
 `define rx rx
 `define cs cs
 `define sck sck
 #400 rx=1;
-    """ % (1000000000/BAUD,(1000000000/BAUD)*BREAK_TIME_BITS )
+    """.format(1000000000 // BAUD, (1000000000 // BAUD) * BREAK_TIME_BITS)
 
-    SUFFIX="""
+    SUFFIX = """
 //end of test
 end
 """
-    WIDTH=8
-    
+    WIDTH = 8
+
     def sendBreak(self):
-        self.writeSim("#`UARTCLK `rx=0; //send break" )
-        self.writeSim("#`BREAKCLK `rx=1; " )
-                
+        self.writeSim("#`UARTCLK `rx=0; //send break")
+        self.writeSim("#`BREAKCLK `rx=1; ")
 
-    def uartByte(self,value):
-        #start bit
-        self.writeSim("#`UARTCLK `rx=0; " )
-        #data
-        self.writeSim("for(i=0;i<%d;i=i+1) begin\t// send 0x%02x" % (self.WIDTH,value) )
-        self.writeSim("#`UARTCLK `rx=(%d >> i)&1; " % (value) )
+    def uartByte(self, value):
+        # start bit
+        self.writeSim("#`UARTCLK `rx=0; ")
+        # data
+        self.writeSim("for(i=0;i<{:d};i=i+1) begin\t// send 0x{:02x}".format(self.WIDTH, value))
+        self.writeSim("#`UARTCLK `rx=({:d} >> i)&1; ".format(value))
         self.writeSim("end")
-        #stop bit
-        self.writeSim("#`UARTCLK `rx=1; "  )
-
-
+        # stop bit
+        self.writeSim("#`UARTCLK `rx=1; ")
 
     def startMessage(self):
-        if self.prefixLength==0 or self.sendFlush:
+        if self.prefixLength == 0 or self.sendFlush:
             self.flushComms()
 
     def stopMessage(self):
         pass
 
-    def sendMessage(self,bytes):
-        if not isinstance(bytes,str):
-            bytes="".join([chr(d) for d in bytes])
-        bytes=self.addPrefix(bytes)
+    def sendMessage(self, bytes):
+        if not isinstance(bytes, str):
+            bytes = "".join([chr(d) for d in bytes])
+        bytes = self.addPrefix(bytes)
         self.writeRaw(bytes)
 
-    def writeRaw(self,bytes):
+    def writeRaw(self, bytes):
         for b in bytes:
             self.uartByte(ord(b))
-        
 
-    def readBytes(self,length):
+    def readBytes(self, length):
         return [0 for n in range(length)]
 
-    def skipBytes(self,length):
+    def skipBytes(self, length):
         pass
 
-#/////////////////////////////////////////////
+
+# /////////////////////////////////////////////
 
 
 class UART(IODevice):
-    TIME_SCALE=1.0
-    DEBUG=False
+    TIME_SCALE = 1.0
+    DEBUG = False
 
-    def __init__(self,deviceParams={"port":"/dev/ttyUSB0"}):
+    def __init__(self, deviceParams={"port": "/dev/ttyUSB0"}):
         IODevice.__init__(self)
-        self.ttyDevice=deviceParams["port"]
-        self.baud=BAUD
-        self.stop=False
+        self.ttyDevice = deviceParams["port"]
+        self.baud = BAUD
+        self.stop = False
         self.flushReply()
 
     def openTransport(self):
-        self.serial = serial.Serial(self.ttyDevice, self.baud, stopbits=2, timeout=0.2, xonxoff=0, rtscts=False,dsrdtr=False)
+        self.serial = serial.Serial(self.ttyDevice, self.baud, stopbits=2, timeout=0.2, xonxoff=0, rtscts=False, dsrdtr=False)
         self.serial.flush()
-        self.listener=threading.Thread(target=self.listen)
-        self.listener.daemon=True
+        self.listener = threading.Thread(target=self.listen)
+        self.listener.daemon = True
         self.listener.start()
 
     def closeTransport(self):
-        self.stop=True
+        self.stop = True
         time.sleep(1)
         self.serial.close()
-        #todo properly
+        # todo properly
 
     def listen(self):
-        totalRx=0
-        self.skipByteCount=0
+        totalRx = 0
+        self.skipByteCount = 0
         while True:
-            data=self.serial.read(1)
+            data = self.serial.read(1)
             if self.stop:
                 return
             if len(data):
-                totalRx+=len(data)
+                totalRx += len(data)
                 for d in data:
                     if self.skipByteCount:
-                        self.skipByteCount-=1
+                        self.skipByteCount -= 1
                     else:
                         self.readQ.put(ord(d))
                     if self.DEBUG:
-                        print "<%02x" % ord(d),
+                        print("<{:02x}".format(ord(d)), end=' ')
                 if self.DEBUG:
-                    print ""
-                """
-                print "\t>",
-                for d in data:
-                    print "%02x" % ord(d),
-                print ""
-                """
-                #print ">",totalRx,"<"
-                #if data:
-                #    print print "0x%02x" % ord(data),data
+                    print("")
+                # print("\t>", end=' ')
+                # for d in data:
+                #     print("{:02x}".format(ord(d)), end=' ')
+                # print("")
 
+                # print(">{}<".format(totalRx))
+                # if data:
+                # print(("0x%02x" % ord(data),data))
 
     def sendBreak(self):
-        self.serial.sendBreak() #this is really slow on linux 
-    
+        self.serial.sendBreak()  # this is really slow on linux
 
     def startMessage(self):
-        if self.prefixLength==0 or self.sendFlush:
+        if self.prefixLength == 0 or self.sendFlush:
             self.flushComms()
 
     def stopMessage(self):
         pass
 
-    #must be complete message in one call if prefixLength!=0
-    def sendMessage(self,bytes):
-        if not isinstance(bytes,str):
-            bytes="".join([chr(d) for d in bytes])
-        bytes=self.addPrefix(bytes)
+    # must be complete message in one call if prefixLength!=0
+    def sendMessage(self, bytes):
+        if not isinstance(bytes, str):
+            bytes = "".join([chr(d) for d in bytes])
+        bytes = self.addPrefix(bytes)
         if self.DEBUG:
             for d in bytes:
-                print ">%02x" % d,
-            print ""
+                print(">{:02x}".format(d), end=' ')
+            print("")
         self.writeRaw(bytes)
 
-    def writeRaw(self,b):
+    def writeRaw(self, b):
         self.serial.write(b)
 
+    def skipBytes(self, length):
+        self.skipByteCount += length  # dubiously threadsafe but eh
 
-    def skipBytes(self,length):
-        self.skipByteCount+=length #dubiously threadsafe but eh
-
-
-    def readBytes(self,length):
-        reply=[]
+    def readBytes(self, length):
+        reply = []
         for n in range(length):
             try:
-                d=self.readQ.get(True,1)
+                d = self.readQ.get(True, 1)
                 reply.append(d)
-            except Queue.Empty:
-                raise ReadTimeout("Read timeout from NX4, got %d of %d" % (len(reply),length))
+            except queue.Empty:
+                raise ReadTimeout("Read timeout from NX4, got {:d} of {:d}".format(len(reply), length))
         return reply
 
     def flushReply(self):
-        self.readQ=Queue.Queue()
-        
+        self.readQ = queue.Queue()
 
-#/////////////////////////////////////////////
 
+# /////////////////////////////////////////////
 
 
 class NX4Connector(object):
-    
-    #talks to the command processor module in the fpga
 
-    def __init__(self,ioDevice,unitID=0):
-        self.unitID=0
-        self.upperMemBits=0xff
-        self.ioDevice=ioDevice
+    # talks to the command processor module in the fpga
 
-        #remember not to trounce the default settings; could also just read them
-        self.ioctl=NX4.DEFAULT_BAUD_MULTIPLIER<<NX4.OpenNX4_REG_IOCTL_BIT_UART_BAUD_0
-        self.sysctl=(1<<NX4.OpenNX4_REG_SYSCTL_BIT_MSG_LENGTH_PREFIX0)|(0<<NX4.OpenNX4_REG_SYSCTL_BIT_AUTO_BUFFER_FLIP)|(1<<NX4.OpenNX4_REG_SYSCTL_BIT_FB0_WRITE)
+    def __init__(self, ioDevice, unitID=0):
+        self.unitID = 0
+        self.upperMemBits = 0xff
+        self.ioDevice = ioDevice
 
-        self.mode=0
-        self.xlat=0
-        self.sclk=0
-        self.cpldTest=0
-        self.writeModuloLength=0
-        self.writeModuloModulo=0
+        # remember not to trounce the default settings; could also just read them
+        self.ioctl = NX4.DEFAULT_BAUD_MULTIPLIER << NX4.OpenNX4_REG_IOCTL_BIT_UART_BAUD_0
+        self.sysctl = (1 << NX4.OpenNX4_REG_SYSCTL_BIT_MSG_LENGTH_PREFIX0) | (0 << NX4.OpenNX4_REG_SYSCTL_BIT_AUTO_BUFFER_FLIP) | (1 << NX4.OpenNX4_REG_SYSCTL_BIT_FB0_WRITE)
 
+        self.mode = 0
+        self.xlat = 0
+        self.sclk = 0
+        self.cpldTest = 0
+        self.writeModuloLength = 0
+        self.writeModuloModulo = 0
 
-    def sendIOMessage(self,bytes):
+    def sendIOMessage(self, bytes):
         self.ioDevice.startMessage()
         self.ioDevice.sendMessage(bytes)
         self.ioDevice.stopMessage()
-    
-    def readBytes(self,length):
+
+    def readBytes(self, length):
         return self.ioDevice.readBytes(length)
 
-    def writeRegister(self,addr,values,skipReply=False):
+    def writeRegister(self, addr, values, skipReply=False):
         if not hasattr(values, '__iter__'):
-            values=[values]
-        bytes=[ NX4.CP_CMD_MODE_REGISTERS | (self.unitID<<NX4.CP_CMD_MODE_BIT_UNIT_ID) | (1<<NX4.CP_CMD_MODE_BIT_WRITE) ,
-                addr]+values
-        self.sendIOMessage(bytes)                
+            values = [values]
+        bytes = [NX4.CP_CMD_MODE_REGISTERS | (self.unitID << NX4.CP_CMD_MODE_BIT_UNIT_ID) | (1 << NX4.CP_CMD_MODE_BIT_WRITE),
+                 addr] + values
+        self.sendIOMessage(bytes)
         if not skipReply:
-            statusBytes=self.readBytes(len(values))
+            statusBytes = self.readBytes(len(values))
         else:
-            self.ioDevice.skipBytes( len(values) )
-            statusBytes=None
+            self.ioDevice.skipBytes(len(values))
+            statusBytes = None
         return statusBytes
 
-    def writeFB(self,addr,values):
+    def writeFB(self, addr, values):
         if not hasattr(values, '__iter__'):
-            values=[values]
-        bytes=[ NX4.CP_CMD_MODE_FB | (self.unitID<<NX4.CP_CMD_MODE_BIT_UNIT_ID) | (1<<NX4.CP_CMD_MODE_BIT_WRITE) ,
-                addr&0xff,addr>>8]+values
-        self.sendIOMessage(bytes)                
+            values = [values]
+        bytes = [NX4.CP_CMD_MODE_FB | (self.unitID << NX4.CP_CMD_MODE_BIT_UNIT_ID) | (1 << NX4.CP_CMD_MODE_BIT_WRITE),
+                 addr & 0xff, addr >> 8] + values
+        self.sendIOMessage(bytes)
 
-    def writeFBRaw(self,addr,fbBytes):  #takes string of bytes instead of array of ints
-        bytes=[ NX4.CP_CMD_MODE_FB | (self.unitID<<NX4.CP_CMD_MODE_BIT_UNIT_ID) | (1<<NX4.CP_CMD_MODE_BIT_WRITE) ,
-                addr&0xff,addr>>8]
-        bytes="".join([chr(d) for d in bytes])
-        self.sendIOMessage(bytes+fbBytes)                
+    def writeFBRaw(self, addr, fbBytes):  # takes string of bytes instead of array of ints
+        bytes = [NX4.CP_CMD_MODE_FB | (self.unitID << NX4.CP_CMD_MODE_BIT_UNIT_ID) | (1 << NX4.CP_CMD_MODE_BIT_WRITE),
+                 addr & 0xff, addr >> 8]
+        bytes = "".join([chr(d) for d in bytes])
+        self.sendIOMessage(bytes + fbBytes)
 
+    def writeIL(self, addr, values):
+        cmode = NX4.CP_CMD_MODE_GAMMA
+        isWrite = 1
+        bytes = [cmode | (self.unitID << NX4.CP_CMD_MODE_BIT_UNIT_ID) | (isWrite << NX4.CP_CMD_MODE_BIT_WRITE),
+                 addr & 0xff] + values
+        self.sendIOMessage(bytes)
 
-    def writeIL(self,addr,values):
-        cmode=NX4.CP_CMD_MODE_GAMMA
-        isWrite=1
-        bytes=[ cmode | (self.unitID<<NX4.CP_CMD_MODE_BIT_UNIT_ID) | (isWrite<<NX4.CP_CMD_MODE_BIT_WRITE) ,
-                addr&0xff]+values
-        self.sendIOMessage(bytes)                
-        
-    def writeMem(self,addr,values,isFlash=1,isWrite=1):
+    def writeMem(self, addr, values, isFlash=1, isWrite=1):
         if not hasattr(values, '__iter__'):
-            values=[values]
+            values = [values]
         self.setUpperMemAddress(addr)
-        cmode=NX4.CP_CMD_MODE_FLASH if isFlash else NX4.CP_CMD_MODE_SRAM
-        bytes=[ cmode | (self.unitID<<NX4.CP_CMD_MODE_BIT_UNIT_ID) | (isWrite<<NX4.CP_CMD_MODE_BIT_WRITE) ,
-                addr&0xff,(addr>>8)&0xff]+values
-        self.sendIOMessage(bytes)                
-        
-    def setUpperMemAddress(self,addr):
-        umb=addr>>16
-        if umb==self.upperMemBits:
+        cmode = NX4.CP_CMD_MODE_FLASH if isFlash else NX4.CP_CMD_MODE_SRAM
+        bytes = [cmode | (self.unitID << NX4.CP_CMD_MODE_BIT_UNIT_ID) | (isWrite << NX4.CP_CMD_MODE_BIT_WRITE),
+                 addr & 0xff, (addr >> 8) & 0xff] + values
+        self.sendIOMessage(bytes)
+
+    def setUpperMemAddress(self, addr):
+        umb = addr >> 16
+        if umb == self.upperMemBits:
             return
-        self.upperMemBits=umb
+        self.upperMemBits = umb
         self.writeRegister(NX4.OpenNX4_REG_MEM_UPPER_ADDR, umb)
-        
-    def readMem(self,addr,length,isFlash=1):
-        values=[0 for d in range(length)]
-        self.setUpperMemAddress(addr)
-        #if length>256:
-        #    self.setLengthPrefix(2)
-        #same as a write but you send dummy values each of which triggers a read
-        self.writeMem(addr,values,isFlash=isFlash,isWrite=0)
-        return self.readBytes(length)
-        
 
-    def readRegister(self,addr,count=1):
-        bytes=[ NX4.CP_CMD_MODE_REGISTERS | (self.unitID<<NX4.CP_CMD_MODE_BIT_UNIT_ID) ,
-                addr]
+    def readMem(self, addr, length, isFlash=1):
+        values = [0 for d in range(length)]
+        self.setUpperMemAddress(addr)
+        # if length>256:
+        #    self.setLengthPrefix(2)
+        # same as a write but you send dummy values each of which triggers a read
+        self.writeMem(addr, values, isFlash=isFlash, isWrite=0)
+        return self.readBytes(length)
+
+    def readRegister(self, addr, count=1):
+        bytes = [NX4.CP_CMD_MODE_REGISTERS | (self.unitID << NX4.CP_CMD_MODE_BIT_UNIT_ID),
+                 addr]
         for n in range(count):
-            bytes.append(0) #send dummy byte to trigger transmission of one
-        self.sendIOMessage(bytes)     
+            bytes.append(0)  # send dummy byte to trigger transmission of one
+        self.sendIOMessage(bytes)
         return self.readBytes(1)[0]
 
-
-    #def selectWriteFramebuffer(self,fbIndex):
+    # def selectWriteFramebuffer(self,fbIndex):
     #    #self.writeRegister( NX4.OpenNX4_REG_SYSCTL , )
 
-    def setLengthPrefix(self,prefixLength):
-        #0,1,2 byte length prefix
-        lastPrefixLength=self.ioDevice.prefixLength
-        mask=3<<NX4.OpenNX4_REG_SYSCTL_BIT_MSG_LENGTH_PREFIX0
-        self.sysctl=(self.sysctl&~mask)|(prefixLength<<NX4.OpenNX4_REG_SYSCTL_BIT_MSG_LENGTH_PREFIX0)
-        self.writeRegister(NX4.OpenNX4_REG_SYSCTL , [self.sysctl] )
-        self.writeRegister(NX4.OpenNX4_REG_SYSCTL , [self.sysctl] )
-        """
-        if lastPrefixLength:
-            #need to flush last state of counter
-            padding=chr(0)*(lastPrefixLength+1)
-            print prefixLength,len(padding)
-            self.ioDevice.writeRaw(padding)
-        """
+    def setLengthPrefix(self, prefixLength):
+        # 0,1,2 byte length prefix
+        lastPrefixLength = self.ioDevice.prefixLength
+        mask = 3 << NX4.OpenNX4_REG_SYSCTL_BIT_MSG_LENGTH_PREFIX0
+        self.sysctl = (self.sysctl & ~mask) | (prefixLength << NX4.OpenNX4_REG_SYSCTL_BIT_MSG_LENGTH_PREFIX0)
+        self.writeRegister(NX4.OpenNX4_REG_SYSCTL, [self.sysctl])
+        self.writeRegister(NX4.OpenNX4_REG_SYSCTL, [self.sysctl])
+
+        # if lastPrefixLength:
+        #     #need to flush last state of counter
+        #     padding=chr(0)*(lastPrefixLength+1)
+        #     print("{} {}".format(prefixLength, len(padding)))
+        #     self.ioDevice.writeRaw(padding)
+        #
         self.ioDevice.setLengthPrefix(prefixLength)
-        
-    
-    def writeFramebuffer(self,addr,values):
-        bytes=[ NX4.CP_CMD_MODE_REGISTERS | (self.unitID<<NX4.CP_CMD_MODE_BIT_UNIT_ID) | (1<<NX4.CP_CMD_MODE_BIT_WRITE) ,
-                addr]+values
-        self.sendIOMessage(bytes)                
-        
-# ----------------------------------------------------
+
+    def writeFramebuffer(self, addr, values):
+        bytes = [NX4.CP_CMD_MODE_REGISTERS | (self.unitID << NX4.CP_CMD_MODE_BIT_UNIT_ID) | (1 << NX4.CP_CMD_MODE_BIT_WRITE),
+                 addr] + values
+        self.sendIOMessage(bytes)
+
+    # ----------------------------------------------------
+
 
 class NX4BitbangedI2C(object):
-    DEBUG=False
+    DEBUG = False
 
-    def i2cRead(self,i2cAddr,i2cRegAddr,length,address16Bit=False):
-        i2Addr=[i2cRegAddr]
+    def i2cRead(self, i2cAddr, i2cRegAddr, length, address16Bit=False):
+        i2Addr = [i2cRegAddr]
         if address16Bit:
-            i2Addr=[i2cRegAddr>>8,i2cRegAddr&0xff]
-            
-        reply=self.i2cTransaction(i2cAddr,i2Addr,readLength=length)
-        if reply==False:
-            print ("I2C NACK on address %02x" % i2cAddr)
+            i2Addr = [i2cRegAddr >> 8, i2cRegAddr & 0xff]
+
+        reply = self.i2cTransaction(i2cAddr, i2Addr, readLength=length)
+        if reply == False:
+            print("I2C NACK on address {:02x}".format(i2cAddr))
             return False
-        return reply #array of ints
-    
-    def i2cWrite(self,i2cAddr,i2cRegAddr,data,address16Bit=False):
-        i2Addr=[i2cRegAddr]
+        return reply  # array of ints
+
+    def i2cWrite(self, i2cAddr, i2cRegAddr, data, address16Bit=False):
+        i2Addr = [i2cRegAddr]
         if address16Bit:
-            i2Addr=[i2cRegAddr>>8,i2cRegAddr&0xff]
-        data=i2Addr+data
-        reply=self.i2cTransaction(i2cAddr,data,readLength=0)
-        if reply==False:
-            print ("I2C NACK on address %02x" % i2cAddr)
+            i2Addr = [i2cRegAddr >> 8, i2cRegAddr & 0xff]
+        data = i2Addr + data
+        reply = self.i2cTransaction(i2cAddr, data, readLength=0)
+        if reply == False:
+            print("I2C NACK on address {:02x}".format(i2cAddr))
             return False
 
-
-    def generateSCLSDA(self,scl,sda):
-        mask=(1<<NX4.OpenNX4_REG_IOCTL_BIT_I2C_SCL)|(1<<NX4.OpenNX4_REG_IOCTL_BIT_I2C_SDA)
-        self.nx4.ioctl=(self.nx4.ioctl&~mask)|(scl<<NX4.OpenNX4_REG_IOCTL_BIT_I2C_SCL)|(sda<<NX4.OpenNX4_REG_IOCTL_BIT_I2C_SDA)
+    def generateSCLSDA(self, scl, sda):
+        mask = (1 << NX4.OpenNX4_REG_IOCTL_BIT_I2C_SCL) | (1 << NX4.OpenNX4_REG_IOCTL_BIT_I2C_SDA)
+        self.nx4.ioctl = (self.nx4.ioctl & ~mask) | (scl << NX4.OpenNX4_REG_IOCTL_BIT_I2C_SCL) | (sda << NX4.OpenNX4_REG_IOCTL_BIT_I2C_SDA)
         return [self.nx4.ioctl]
 
-
-
-    def i2cTxByte(self,byte,sendStart=False,sendStop=False):
-        ioctlBytes=[]
-        bit=0x80
-        sda=1
+    def i2cTxByte(self, byte, sendStart=False, sendStop=False):
+        ioctlBytes = []
+        bit = 0x80
+        sda = 1
 
         if self.DEBUG:
-            print "--- TX %02x" % byte
-        #https://cdn.sparkfun.com/assets/6/4/7/1/e/51ae0000ce395f645d000000.png
-        if sendStart:    
-            sda=1
-            scl=1
-            ioctlBytes+=self.generateSCLSDA(scl,sda)
-        
-            sda=0
-            scl=1 #start
-            ioctlBytes+=self.generateSCLSDA(scl,sda)
-        
+            print("--- TX {:02x}".format(byte))
+        # https://cdn.sparkfun.com/assets/6/4/7/1/e/51ae0000ce395f645d000000.png
+        if sendStart:
+            sda = 1
+            scl = 1
+            ioctlBytes += self.generateSCLSDA(scl, sda)
+
+            sda = 0
+            scl = 1  # start
+            ioctlBytes += self.generateSCLSDA(scl, sda)
+
         while bit:
-            scl=0
-            ioctlBytes+=self.generateSCLSDA(scl,sda)
-            sda=1 if byte & bit else 0
-            ioctlBytes+=self.generateSCLSDA(scl,sda)
-            scl=1
-            ioctlBytes+=self.generateSCLSDA(scl,sda)
-            
-            bit>>=1
-        scl=0
-        sda=1
-        ioctlBytes+=self.generateSCLSDA(scl,sda)
-        scl=1
-        #sample ACK bit here
-        samplePos=len(ioctlBytes)
-        ioctlBytes+=self.generateSCLSDA(scl,sda)
-        scl=0
-        ioctlBytes+=self.generateSCLSDA(scl,sda)
+            scl = 0
+            ioctlBytes += self.generateSCLSDA(scl, sda)
+            sda = 1 if byte & bit else 0
+            ioctlBytes += self.generateSCLSDA(scl, sda)
+            scl = 1
+            ioctlBytes += self.generateSCLSDA(scl, sda)
+
+            bit >>= 1
+        scl = 0
+        sda = 1
+        ioctlBytes += self.generateSCLSDA(scl, sda)
+        scl = 1
+        # sample ACK bit here
+        samplePos = len(ioctlBytes)
+        ioctlBytes += self.generateSCLSDA(scl, sda)
+        scl = 0
+        ioctlBytes += self.generateSCLSDA(scl, sda)
 
         if sendStop:
-            sda=0
-            scl=1
-            ioctlBytes+=self.generateSCLSDA(scl,sda)
-            sda=1
-            scl=1
-            ioctlBytes+=self.generateSCLSDA(scl,sda)
+            sda = 0
+            scl = 1
+            ioctlBytes += self.generateSCLSDA(scl, sda)
+            sda = 1
+            scl = 1
+            ioctlBytes += self.generateSCLSDA(scl, sda)
 
-        replyData=self.nx4.writeRegister(NX4.OpenNX4_REG_IOCTL,ioctlBytes)
-        
+        replyData = self.nx4.writeRegister(NX4.OpenNX4_REG_IOCTL, ioctlBytes)
+
         if self.DEBUG:
-            dp=0
+            dp = 0
             for d in ioctlBytes:
-                r=(replyData[dp]&(1<<NX4.OpenNX4_STATUS0_BIT_I2C_SDA))==1
-                print "%d%d %d %s\t" % (d>>3&1,d>>4&1,r,"<" if dp==samplePos else "")
-                dp+=1
-            print samplePos,len(ioctlBytes),len(replyData)
-        #check for ack
-        sample=(replyData[samplePos]&(1<<NX4.OpenNX4_STATUS0_BIT_I2C_SDA))==0
+                r = (replyData[dp] & (1 << NX4.OpenNX4_STATUS0_BIT_I2C_SDA)) == 1
+                print("{:d}{:d} {:d} {}\t".format(d >> 3 & 1, d >> 4 & 1, r, "<" if dp == samplePos else ""))
+                dp += 1
+            print("{} {} {}".format(samplePos, len(ioctlBytes), len(replyData)))
+        # check for ack
+        sample = (replyData[samplePos] & (1 << NX4.OpenNX4_STATUS0_BIT_I2C_SDA)) == 0
 
         if self.isSimulation:
             return True
 
         return sample
 
-    def i2cRxByte(self,sendNACK=0):
-        ioctlBytes=[]
-        samplePositions=[]
-        bit=0x80
+    def i2cRxByte(self, sendNACK=0):
+        ioctlBytes = []
+        samplePositions = []
+        bit = 0x80
         if self.DEBUG:
-            print "---RX"
-        
-        sda=1
-        while bit:
-            scl=0
-            ioctlBytes+=self.generateSCLSDA(scl,sda)
-            scl=1
-            ioctlBytes+=self.generateSCLSDA(scl,sda)
-            #sample SDA here
-            samplePositions.append(len(ioctlBytes))
-            bit>>=1
-        #send ack or stop
-        scl=0
-        sda=sendNACK
-        ioctlBytes+=self.generateSCLSDA(scl,sda)
-        scl=1
-        ioctlBytes+=self.generateSCLSDA(scl,sda)
-        scl=0
-        ioctlBytes+=self.generateSCLSDA(scl,sda)
+            print("---RX")
 
-        #extra for debugging
-        #if self.DEBUG:
+        sda = 1
+        while bit:
+            scl = 0
+            ioctlBytes += self.generateSCLSDA(scl, sda)
+            scl = 1
+            ioctlBytes += self.generateSCLSDA(scl, sda)
+            # sample SDA here
+            samplePositions.append(len(ioctlBytes))
+            bit >>= 1
+        # send ack or stop
+        scl = 0
+        sda = sendNACK
+        ioctlBytes += self.generateSCLSDA(scl, sda)
+        scl = 1
+        ioctlBytes += self.generateSCLSDA(scl, sda)
+        scl = 0
+        ioctlBytes += self.generateSCLSDA(scl, sda)
+
+        # extra for debugging
+        # if self.DEBUG:
         #    for n in range(5):
         #        ioctlBytes+=self.generateSCLSDA(scl,sda)
 
-        #if we sent a NACK, send a stop as well
+        # if we sent a NACK, send a stop as well
         if sendNACK:
-            sda=0
-            scl=1
-            ioctlBytes+=self.generateSCLSDA(scl,sda)
-            sda=1
-            scl=1
-            ioctlBytes+=self.generateSCLSDA(scl,sda)
+            sda = 0
+            scl = 1
+            ioctlBytes += self.generateSCLSDA(scl, sda)
+            sda = 1
+            scl = 1
+            ioctlBytes += self.generateSCLSDA(scl, sda)
 
-        replyData=self.nx4.writeRegister(NX4.OpenNX4_REG_IOCTL,ioctlBytes)
+        replyData = self.nx4.writeRegister(NX4.OpenNX4_REG_IOCTL, ioctlBytes)
 
-        bit=0x80
-        byte=0
+        bit = 0x80
+        byte = 0
         for samplePos in samplePositions:
-            sample=replyData[samplePos]&(1<<NX4.OpenNX4_STATUS0_BIT_I2C_SDA)
+            sample = replyData[samplePos] & (1 << NX4.OpenNX4_STATUS0_BIT_I2C_SDA)
             if sample:
-                byte|=bit
-            bit>>=1
+                byte |= bit
+            bit >>= 1
 
         if self.DEBUG:
-            dp=0
+            dp = 0
             for d in ioctlBytes:
-                r=(replyData[dp]&(1<<NX4.OpenNX4_STATUS0_BIT_I2C_SDA))==1
-                print "%d%d %d %s\t" % (d>>3&1,d>>4&1,r,"<" if dp in samplePositions else "")
-                dp+=1
-            print "=%02x" % byte
+                r = (replyData[dp] & (1 << NX4.OpenNX4_STATUS0_BIT_I2C_SDA)) == 1
+                print("{:d}{:d} {:d} {}\t".format(d >> 3 & 1, d >> 4 & 1, r, "<" if dp in samplePositions else ""))
+                dp += 1
+            print("={:02x}".format(byte))
 
         return byte
 
-        
-    def i2cTransaction(self,i2cAddr,txData,readLength):
-        reply=True
-        self.setAddressModulo(1,0)
-        if not self.i2cTxByte(i2cAddr<<1,sendStart=True):
-            #got a NACK
+    def i2cTransaction(self, i2cAddr, txData, readLength):
+        reply = True
+        self.setAddressModulo(1, 0)
+        if not self.i2cTxByte(i2cAddr << 1, sendStart=True):
+            # got a NACK
             return False
         if self.DEBUG:
-            print "--- TX OK ON %02x" % i2cAddr
-        dpos=0
+            print("--- TX OK ON {:02x}".format(i2cAddr))
+        dpos = 0
         for d in txData:
-            isLastByte= (dpos==len(txData)-1)
-            sendStop=(isLastByte and readLength==0)
-            if not self.i2cTxByte(d,sendStop = sendStop ):
+            isLastByte = (dpos == len(txData) - 1)
+            sendStop = (isLastByte and readLength == 0)
+            if not self.i2cTxByte(d, sendStop=sendStop):
                 return False
-            dpos+=1
+            dpos += 1
         if readLength:
-            if not self.i2cTxByte((i2cAddr<<1)|1,sendStart=True):
-                #got a NACK
+            if not self.i2cTxByte((i2cAddr << 1) | 1, sendStart=True):
+                # got a NACK
                 return False
-            
-            reply=[]
+
+            reply = []
             for r in range(readLength):
-                isLastByte= (r==readLength-1)
-                reply.append( self.i2cRxByte(sendNACK=isLastByte) )
+                isLastByte = (r == readLength - 1)
+                reply.append(self.i2cRxByte(sendNACK=isLastByte))
 
         return reply
 
 
+# /////////////////////////////////////////////
 
+PIX = 1 << 0  # temp hacking constants for bitbang
+SCLK = 1 << 3
+XLAT = 1 << 2
+MODE = 1 << 1
+DC_WIDTH = 6
+GS_WIDTH = 12
 
-#/////////////////////////////////////////////
-
-PIX=1<<0  #temp hacking constants for bitbang
-SCLK=1<<3
-XLAT=1<<2
-MODE=1<<1
-DC_WIDTH=6
-GS_WIDTH=12
 
 class OpenNX4(NX4BitbangedI2C):
+    # https://cdn-shop.adafruit.com/datasheets/TSL2561.pdf
+    I2C_ADDR_LIGHT_SENSOR = 0x39  #: LED Panel ambient light sensor
+    # http://www.analog.com/media/en/technical-documentation/data-sheets/AD7416_7417_7418.pdf
+    # https://github.com/rushup/Kitra530-kernel/blob/master/drivers/hwmon/ad7418.c
+    I2C_ADDR_LED_TEMP = 0x48  #: LED Panel temperature sensor
+    I2C_ADDR_CTRL_TEMP = 0x49  # ): Control Board temperature sensor
+    # http://www.atmel.com/images/doc1116.pdf
+    I2C_ADDR_LED_EEPROM = 0x50  # ): LED Panel EEPROM (512kbit/64kbyte)
+    I2C_ADDR_CTRL_EEPROM = 0x51  # ): Control Board EEPROM (512kbit/64kbyte)
 
-    #https://cdn-shop.adafruit.com/datasheets/TSL2561.pdf
-    I2C_ADDR_LIGHT_SENSOR=0x39 #: LED Panel ambient light sensor
-    #http://www.analog.com/media/en/technical-documentation/data-sheets/AD7416_7417_7418.pdf
-    #https://github.com/rushup/Kitra530-kernel/blob/master/drivers/hwmon/ad7418.c
-    I2C_ADDR_LED_TEMP=0x48 #: LED Panel temperature sensor
-    I2C_ADDR_CTRL_TEMP=0x49 #): Control Board temperature sensor
-    #http://www.atmel.com/images/doc1116.pdf
-    I2C_ADDR_LED_EEPROM=0x50 #): LED Panel EEPROM (512kbit/64kbyte)
-    I2C_ADDR_CTRL_EEPROM=0x51 #): Control Board EEPROM (512kbit/64kbyte)
-
-
-    def __init__(self,simulate=False):
-        self.isSimulation=simulate
+    def __init__(self, simulate=False):
+        self.isSimulation = simulate
         if simulate:
-            self.ioDevice=UARTSimulation({})
+            self.ioDevice = UARTSimulation({})
         else:
-            self.ioDevice=UART({"port":DEFAULT_COM_PORT})
+            self.ioDevice = UART({"port": DEFAULT_COM_PORT})
         self.ioDevice.openTransport()
-        
-        #eh just lazy
+
+        # eh just lazy
         self.ioDevice.setSimulationName(SIM_TEST_FILE)
-        
-        self.nx4=NX4Connector(self.ioDevice,unitID=0)
 
-        self.pixelWord=0
-        self.counter=0
+        self.nx4 = NX4Connector(self.ioDevice, unitID=0)
 
-        #self.precalcScan()
+        self.pixelWord = 0
+        self.counter = 0
 
-        self.images=[]
+        # self.precalcScan()
 
-        self.testLEDs=[0 for d in range(3*32*36)]
-        self.count=100000
+        self.images = []
+
+        self.testLEDs = [0 for d in range(3 * 32 * 36)]
+        self.count = 100000
         if self.isSimulation:
-            self.count=20
-        
-
+            self.count = 20
 
     def close(self):
-        #important if you're simulating, not so much for real 
+        # important if you're simulating, not so much for real
         self.ioDevice.closeTransport()
 
-    def sleep(self,t):  #real sleep or dummy if simulating
+    def sleep(self, t):  # real sleep or dummy if simulating
         self.ioDevice.sleep(t)
 
-    def selectFB(self,fbIndex):
-        mask=(1<<NX4.OpenNX4_REG_SYSCTL_BIT_FB0_WRITE)|(1<<NX4.OpenNX4_REG_SYSCTL_BIT_FB1_WRITE)
-        self.nx4.sysctl=(self.nx4.sysctl&~mask)|(fbIndex<<NX4.OpenNX4_REG_SYSCTL_BIT_FB0_WRITE)
-        self.nx4.writeRegister(NX4.OpenNX4_REG_SYSCTL , [self.nx4.sysctl] )
+    def selectFB(self, fbIndex):
+        mask = (1 << NX4.OpenNX4_REG_SYSCTL_BIT_FB0_WRITE) | (1 << NX4.OpenNX4_REG_SYSCTL_BIT_FB1_WRITE)
+        self.nx4.sysctl = (self.nx4.sysctl & ~mask) | (fbIndex << NX4.OpenNX4_REG_SYSCTL_BIT_FB0_WRITE)
+        self.nx4.writeRegister(NX4.OpenNX4_REG_SYSCTL, [self.nx4.sysctl])
 
-
-    #the "hello world" of the NX4
+    # the "hello world" of the NX4
     def toggleRedLED(self):
-        self.nx4.writeRegister(NX4.OpenNX4_REG_IOCTL , [self.nx4.ioctl] )
-        self.nx4.ioctl^=(1<<NX4.OpenNX4_REG_IOCTL_BIT_RED_LED)
-    
-    #when writing to anything (registers,fb, sram etc)    
-    #you can have the dest address pointer jump forwards or backwards
-    #after a certain number of writes, allowing you to send pixels to rectangular windows
-    #or do a long string of register byte writes that loop over one or more registers
-    def setAddressModulo(self,length,modulo=0):
-        #print "SWM",length,modulo
-        if length!=1:
-            modulo-=length
-            modulo=modulo+1
+        self.nx4.writeRegister(NX4.OpenNX4_REG_IOCTL, [self.nx4.ioctl])
+        self.nx4.ioctl ^= (1 << NX4.OpenNX4_REG_IOCTL_BIT_RED_LED)
+
+    # when writing to anything (registers,fb, sram etc)
+    # you can have the dest address pointer jump forwards or backwards
+    # after a certain number of writes, allowing you to send pixels to rectangular windows
+    # or do a long string of register byte writes that loop over one or more registers
+    def setAddressModulo(self, length, modulo=0):
+        # print("SWM {} {}".format(length,modulo))
+        if length != 1:
+            modulo -= length
+            modulo = modulo + 1
         else:
-            modulo=0 #odd special case here in the logic
-        self.nx4.writeRegister(NX4.OpenNX4_REG_CMD_AUTOINC_LEN , length )
-        self.nx4.writeRegister(NX4.OpenNX4_REG_CMD_AUTOINC_MODULO , modulo&0xff )
-    
-    #can direct fb writes to fb0 (fbMask=1) or fb1 (=2) or both (=3)
-    def setFBTarget(self,fbMask):
-        mask=(1<<NX4.OpenNX4_REG_SYSCTL_BIT_FB1_WRITE)|(1<<NX4.OpenNX4_REG_SYSCTL_BIT_FB0_WRITE)
-        self.nx4.sysctl=(self.nx4.sysctl&~mask)|(fbMask<<NX4.OpenNX4_REG_SYSCTL_BIT_FB0_WRITE)
-        self.nx4.writeRegister(NX4.OpenNX4_REG_SYSCTL, self.nx4.sysctl )
-        
+            modulo = 0  # odd special case here in the logic
+        self.nx4.writeRegister(NX4.OpenNX4_REG_CMD_AUTOINC_LEN, length)
+        self.nx4.writeRegister(NX4.OpenNX4_REG_CMD_AUTOINC_MODULO, modulo & 0xff)
+
+    # can direct fb writes to fb0 (fbMask=1) or fb1 (=2) or both (=3)
+    def setFBTarget(self, fbMask):
+        mask = (1 << NX4.OpenNX4_REG_SYSCTL_BIT_FB1_WRITE) | (1 << NX4.OpenNX4_REG_SYSCTL_BIT_FB0_WRITE)
+        self.nx4.sysctl = (self.nx4.sysctl & ~mask) | (fbMask << NX4.OpenNX4_REG_SYSCTL_BIT_FB0_WRITE)
+        self.nx4.writeRegister(NX4.OpenNX4_REG_SYSCTL, self.nx4.sysctl)
 
     def testFlashPowerLED(self):
-        #this is the 'hello world' 
-        #self.nx4.setLengthPrefix(2)
-        for n in xrange(self.count):
+        # this is the 'hello world'
+        # self.nx4.setLengthPrefix(2)
+        for n in range(self.count):
             self.toggleRedLED()
             self.sleep(0.3)
             if self.ioDevice.stop:
                 return
 
-    #only for debug xilinx code 
+    # only for debug xilinx code
     def testWriteTestPixel(self):
-        r=1
-        for n in xrange(self.count):
-            print r
-            self.nx4.writeRegister(NX4.OpenNX4_REG_TEST_PIXEL, r )
+        r = 1
+        for n in range(self.count):
+            print(r)
+            self.nx4.writeRegister(NX4.OpenNX4_REG_TEST_PIXEL, r)
             self.sleep(0.1)
-            self.nx4.writeRegister(NX4.OpenNX4_REG_TEST_PIXEL, 0 )
-            r<<=1
-            r&=0xff
-            if r==0:
-                r=1
+            self.nx4.writeRegister(NX4.OpenNX4_REG_TEST_PIXEL, 0)
+            r <<= 1
+            r &= 0xff
+            if r == 0:
+                r = 1
             self.toggleRedLED()
             self.sleep(0.25)
 
-
-
-
-
-
-    def fbFill(self,rInc=0,gInc=0,bInc=0):
-        width,height=32,36 #36 #36
-        fillRows=6
-        blank=[]
-        row=0
-        while row<height:
-            blank=[]
-            b,g,r=0,0,0 
+    def fbFill(self, rInc=0, gInc=0, bInc=0):
+        width, height = 32, 36  # 36 #36
+        fillRows = 6
+        blank = []
+        row = 0
+        while row < height:
+            blank = []
+            b, g, r = 0, 0, 0
             for x in range(width):
-                #b=255 if (x&31)<=(self.count&31) else 0
-                #r=g=b=x<<3 #0xff
-                #r=x # if not x&1 else 0 #0 #x10
-                #g=x #0x10
-                #b=x #x if x&1 else 0
-                blank.append(r&0xff)
-                blank.append(g&0xff)
-                blank.append(b&0xff)    #hardware shifts data out red,blue,green (green=last)
-                r+=rInc
-                g+=gInc
-                b+=bInc
-            fbAddr=row*(32*3)
-            #print blank
-            #print "suf %x" % fbAddr
-            self.nx4.writeFB(fbAddr,blank)
-            row+=7-fillRows
-        #self.nx4.writeFB(0,blank)
-
+                # b=255 if (x&31)<=(self.count&31) else 0
+                # r=g=b=x<<3 #0xff
+                # r=x # if not x&1 else 0 #0 #x10
+                # g=x #0x10
+                # b=x #x if x&1 else 0
+                blank.append(r & 0xff)
+                blank.append(g & 0xff)
+                blank.append(b & 0xff)  # hardware shifts data out red,blue,green (green=last)
+                r += rInc
+                g += gInc
+                b += bInc
+            fbAddr = row * (32 * 3)
+            # print(blank)
+            # print("suf {:x}".format(fbAddr))
+            self.nx4.writeFB(fbAddr, blank)
+            row += 7 - fillRows
+        # self.nx4.writeFB(0,blank)
 
     def clearFB(self):
-        self.setFBTarget(3)     #write to both at the same time (may be useful? whatever it's free)
+        self.setFBTarget(3)  # write to both at the same time (may be useful? whatever it's free)
         self.setAddressModulo(0)
         self.nx4.setLengthPrefix(2)
-        blank=[0 for n in range(32*36*3)]
-        self.nx4.writeFB(0,blank)
+        blank = [0 for n in range(32 * 36 * 3)]
+        self.nx4.writeFB(0, blank)
 
         self.setFBTarget(1)
 
-    #currently the way it's set up the base clk is 20mhz so;
-    #pixel clk rate = 20mhz / (1<<pixelDivider)     (pwmDivider is same)
-    #pwm should run at a multiple of the pclk, datasheet says max 30mhz for both clocks
-    #pixel clock is limited by FPGA performance (and determines the row mux rate which is a visible artifact)
-    def setPixelClock(self,pixelDivider=2,pwmDivider=0):
-        value=(pixelDivider<<NX4.OpenNX4_REG_DRIVECTL_BIT_PCLK_DIV0)|(pwmDivider<<NX4.OpenNX4_REG_DRIVECTL_BIT_BCLK_DIV0)
-        self.nx4.writeRegister(NX4.OpenNX4_REG_DRIVECTL, [value] )
-        
+    # currently the way it's set up the base clk is 20mhz so;
+    # pixel clk rate = 20mhz / (1<<pixelDivider)     (pwmDivider is same)
+    # pwm should run at a multiple of the pclk, datasheet says max 30mhz for both clocks
+    # pixel clock is limited by FPGA performance (and determines the row mux rate which is a visible artifact)
+    def setPixelClock(self, pixelDivider=2, pwmDivider=0):
+        value = (pixelDivider << NX4.OpenNX4_REG_DRIVECTL_BIT_PCLK_DIV0) | (pwmDivider << NX4.OpenNX4_REG_DRIVECTL_BIT_BCLK_DIV0)
+        self.nx4.writeRegister(NX4.OpenNX4_REG_DRIVECTL, [value])
 
-    #6 bit value, be careful with the higher values if row scanning not enabled, you may
-    #pop the leds! 
-    def loadDotCorrect(self,value):
-        #loads the same dotcorrect to every driver
-        self.nx4.writeRegister(NX4.OpenNX4_REG_DOT_CORRECT_TEST, [value] )
-        self.nx4.sysctl|=1<<NX4.OpenNX4_REG_SYSCTL_BIT_UPDATE_DC
-        self.nx4.writeRegister(NX4.OpenNX4_REG_SYSCTL, [self.nx4.sysctl] )
-        time.sleep(0.02) #let it process a frame (UPDATE_DC latched at start of frame) 
-        #back to normal mode 
-        self.nx4.sysctl&=~(1<<NX4.OpenNX4_REG_SYSCTL_BIT_UPDATE_DC)
-        self.nx4.writeRegister(NX4.OpenNX4_REG_SYSCTL, [self.nx4.sysctl] )
-        
-        
+    # 6 bit value, be careful with the higher values if row scanning not enabled, you may
+    # pop the leds!
+    def loadDotCorrect(self, value):
+        # loads the same dotcorrect to every driver
+        self.nx4.writeRegister(NX4.OpenNX4_REG_DOT_CORRECT_TEST, [value])
+        self.nx4.sysctl |= 1 << NX4.OpenNX4_REG_SYSCTL_BIT_UPDATE_DC
+        self.nx4.writeRegister(NX4.OpenNX4_REG_SYSCTL, [self.nx4.sysctl])
+        time.sleep(0.02)  # let it process a frame (UPDATE_DC latched at start of frame)
+        # back to normal mode
+        self.nx4.sysctl &= ~(1 << NX4.OpenNX4_REG_SYSCTL_BIT_UPDATE_DC)
+        self.nx4.writeRegister(NX4.OpenNX4_REG_SYSCTL, [self.nx4.sysctl])
+
     def testSetupFill(self):
         self.nx4.setLengthPrefix(2)
         self.setAddressModulo(0)
-        
-        self.setFBTarget(1) 
-        self.fbFill(0,0,8)
-        
-        self.setFBTarget(2) 
-        self.fbFill(8,0,0)
-        
-        #display fb0 only
-        self.nx4.writeRegister(NX4.OpenNX4_REG_FB0_INTENSITY, [0x0ff,0] )
 
-            
+        self.setFBTarget(1)
+        self.fbFill(0, 0, 8)
+
+        self.setFBTarget(2)
+        self.fbFill(8, 0, 0)
+
+        # display fb0 only
+        self.nx4.writeRegister(NX4.OpenNX4_REG_FB0_INTENSITY, [0x0ff, 0])
 
     def testDotCorrectLoad(self):
-        dc=0
-        for n in xrange(self.count):
-            self.loadDotCorrect(dc&63)
-            dc+=1
+        dc = 0
+        for n in range(self.count):
+            self.loadDotCorrect(dc & 63)
+            dc += 1
 
-        
-    def setBufferBlend(self,blend0,blend1):
-        self.nx4.writeRegister(NX4.OpenNX4_REG_FB0_INTENSITY, [blend0&0xff,blend1&0xff] )
-        
+    def setBufferBlend(self, blend0, blend1):
+        self.nx4.writeRegister(NX4.OpenNX4_REG_FB0_INTENSITY, [blend0 & 0xff, blend1 & 0xff])
 
     def testFBBlending(self):
-        fb0=fb1=0
-        
+        fb0 = fb1 = 0
+
         self.setAddressModulo(0)
-        wait=1/60.0
+        wait = 1 / 60.0
 
         for n in range(256):
-            self.setBufferBlend(n,0)
+            self.setBufferBlend(n, 0)
             self.sleep(wait)
 
         self.sleep(2)
         for n in range(256):
-            self.setBufferBlend(255-n,0)
+            self.setBufferBlend(255 - n, 0)
             self.sleep(wait)
 
         for n in range(256):
-            self.setBufferBlend(0,n)
+            self.setBufferBlend(0, n)
             self.sleep(wait)
         self.sleep(2)
 
         for n in range(256):
-            self.setBufferBlend(0,255-n)
+            self.setBufferBlend(0, 255 - n)
             self.sleep(wait)
 
         self.sleep(2)
 
         for n in range(256):
-            self.setBufferBlend(n,0)
-            self.sleep(wait)
-        
-        for n in range(256):    #blend between two
-            self.setBufferBlend(255-n,n)
-            self.sleep(wait)
-           
-        for n in range(256):
-            self.setBufferBlend(0,255-n)
+            self.setBufferBlend(n, 0)
             self.sleep(wait)
 
+        for n in range(256):  # blend between two
+            self.setBufferBlend(255 - n, n)
+            self.sleep(wait)
+
+        for n in range(256):
+            self.setBufferBlend(0, 255 - n)
+            self.sleep(wait)
 
     def dumpMainFlash(self):
         self.setAddressModulo(0)
-        faddr=0
-        flen=2*1024*1024
-        print "Dumping flash"
-        maxSize=252
-        with open("flash_dump.bin","wb") as f:
-            while faddr<flen:
-                print "Read %08x" % faddr
-                blockSize=min(maxSize,flen-faddr)
-                replyData=self.nx4.readMem(faddr,blockSize,isFlash=1)
-                binary="".join([chr(d) for d in replyData])
+        faddr = 0
+        flen = 2 * 1024 * 1024
+        print("Dumping flash")
+        maxSize = 252
+        with open("flash_dump.bin", "wb") as f:
+            while faddr < flen:
+                print("Read {:08x}".format(faddr))
+                blockSize = min(maxSize, flen - faddr)
+                replyData = self.nx4.readMem(faddr, blockSize, isFlash=1)
+                binary = "".join([chr(d) for d in replyData])
                 f.write(binary)
-                faddr+=len(binary)
-            I2C_ADDR_LIGHT_SENSOR
+                faddr += len(binary)
+            # I2C_ADDR_LIGHT_SENSOR
 
-            
-    def dumpEEPROM(self,i2cAddr,length):
+    def dumpEEPROM(self, i2cAddr, length):
         self.setAddressModulo(0)
-        faddr=0
-        binary=""
-        print "Dumping eeprom on address %02x" % i2cAddr
-        maxReq=240
-        with open("eeprom_%02x_dump.bin" % i2cAddr,"wb") as f:
-            while faddr<length:
-                blockSize=min(maxReq,length-faddr)
-                print "Read %08x" % faddr
-                replyData=self.i2cRead(i2cAddr,faddr,blockSize,address16Bit=True)
-                binary="".join([chr(d) for d in replyData])
-                faddr+=len(binary)
+        faddr = 0
+        binary = ""
+        print("Dumping eeprom on address {:02x}".format(i2cAddr))
+        maxReq = 240
+        with open("eeprom_{:02x}_dump.bin".format(i2cAddr), "wb") as f:
+            while faddr < length:
+                blockSize = min(maxReq, length - faddr)
+                print("Read {:08x}".format(faddr))
+                replyData = self.i2cRead(i2cAddr, faddr, blockSize, address16Bit=True)
+                binary = "".join([chr(d) for d in replyData])
+                faddr += len(binary)
                 f.write(binary)
 
     def dumpEEPROMs(self):
-        i2cAddrs=[ self.I2C_ADDR_LED_EEPROM, self.I2C_ADDR_CTRL_EEPROM ]
+        i2cAddrs = [self.I2C_ADDR_LED_EEPROM, self.I2C_ADDR_CTRL_EEPROM]
         for i2cAddr in i2cAddrs:
-            self.dumpEEPROM(i2cAddr,0x10000)
+            self.dumpEEPROM(i2cAddr, 0x10000)
 
-            
-
-    def testRWMemory(self,write=1):
-        #SRAM R/W has some timing issues right now to fix, flash read is ok, not tried unlock+write yet
-        fbAddr=0x0
-        flashWrite=False
+    def testRWMemory(self, write=1):
+        # SRAM R/W has some timing issues right now to fix, flash read is ok, not tried unlock+write yet
+        fbAddr = 0x0
+        flashWrite = False
         self.setAddressModulo(0)
-        length=14 #64
-        errors=0
-        for n in xrange(self.count):
-            fbData=[(x+n)&0xff for x in range(length)]    
-            print "write sram",errors
-            self.nx4.writeMem(fbAddr,fbData,isFlash=0)
-            print "read sram",errors
-            replyData=self.nx4.readMem(fbAddr,len(fbData),isFlash=0)
-            if replyData!=fbData:
-                print "Readback error"
-                print "wr\t",fbData
-                print "rd\t",replyData
-                replyData=self.nx4.readMem(fbAddr,len(fbData),isFlash=0)
-                if replyData!=fbData:
-                    print "rderr2\t",replyData
+        length = 14  # 64
+        errors = 0
+        for n in range(self.count):
+            fbData = [(x + n) & 0xff for x in range(length)]
+            print("write sram {}".format(errors))
+            self.nx4.writeMem(fbAddr, fbData, isFlash=0)
+            print("read sram {}".format(errors))
+            replyData = self.nx4.readMem(fbAddr, len(fbData), isFlash=0)
+            if replyData != fbData:
+                print("Readback error")
+                print("wr\t{}".format(fbData))
+                print("rd\t{}".format(replyData))
+                replyData = self.nx4.readMem(fbAddr, len(fbData), isFlash=0)
+                if replyData != fbData:
+                    print("rderr2\t{}".format(replyData))
                 else:
-                    print "2nd read ok!"
-                errors+=1
+                    print("2nd read ok!")
+                errors += 1
             if flashWrite:
-                print "write flash"
-                self.nx4.writeMem(fbAddr,fbData,isFlash=1)
-            #print "read flash"
-            replyData=self.nx4.readMem(fbAddr,128,isFlash=1)
-            print replyData
+                print("write flash")
+                self.nx4.writeMem(fbAddr, fbData, isFlash=1)
+            # print("read flash")
+            replyData = self.nx4.readMem(fbAddr, 128, isFlash=1)
+            print(replyData)
             return
-            #self.toggleRedLED()
-            #self.sleep(0.1)
+            # self.toggleRedLED()
+            # self.sleep(0.1)
 
-    #write the 8b->12b pixel conversion table; this boots  up with sensible values already
+    # write the 8b->12b pixel conversion table; this boots  up with sensible values already
     def testILWrite(self):
-        ilAddr=0x00
-        ilData=[]
-        #this write isn't quite right in the verilog
+        ilAddr = 0x00
+        ilData = []
+        # this write isn't quite right in the verilog
         for ilCount in range(256):
-            ilValue=ilCount<<4  #crappy test; this isn't as nice as the default (cie curve) lookup 
-            ilValue= 0xfff if ilValue!=0 else 0
-            ilData.append( ilValue&0xff)
-            ilData.append( ilValue>>8 )
-        #self.setAddressModulo(0)
+            ilValue = ilCount << 4  # crappy test; this isn't as nice as the default (cie curve) lookup
+            ilValue = 0xfff if ilValue != 0 else 0
+            ilData.append(ilValue & 0xff)
+            ilData.append(ilValue >> 8)
+        # self.setAddressModulo(0)
         self.nx4.setLengthPrefix(2)
-        self.nx4.writeIL(0,ilData)
-        
+        self.nx4.writeIL(0, ilData)
 
-    def displayImage(self,index,x,y):
-        imgW,imgH,pixels=self.images[index]
-        width,height=32,36
-        fb=[]
-        fbAddr=(x*3)+(y*height*3)   #x,y not really useful, doesn't clip image yet
+    def displayImage(self, index, x, y):
+        imgW, imgH, pixels = self.images[index]
+        width, height = 32, 36
+        fb = []
+        fbAddr = (x * 3) + (y * height * 3)  # x,y not really useful, doesn't clip image yet
         for h in range(height):
-            src=imgW*3*h
-            for w in range(width*3):
-                fb.append(pixels[src+w])   #rgb
+            src = imgW * 3 * h
+            for w in range(width * 3):
+                fb.append(pixels[src + w])  # rgb
         self.nx4.setLengthPrefix(2)
-        self.nx4.writeFB(fbAddr,fb)
-
+        self.nx4.writeFB(fbAddr, fb)
 
     def testImageDisplay(self):
         if not self.images:
-            self.loadImage("pacman.png")         
-            self.loadImage("nyan_cat.png")         
-            
-        self.setFBTarget(1)     #write to both at the same time (may be useful? whatever it's free)
-        y=0
-        x=0
-        self.displayImage(0,x,y)
-        self.setFBTarget(2)     #write to both at the same time (may be useful? whatever it's free)
-        y=0
-        x=0
-        self.displayImage(1,x,y)
-        
+            self.loadImage("pacman.png")
+            self.loadImage("nyan_cat.png")
 
+        self.setFBTarget(1)  # write to both at the same time (may be useful? whatever it's free)
+        y = 0
+        x = 0
+        self.displayImage(0, x, y)
+        self.setFBTarget(2)  # write to both at the same time (may be useful? whatever it's free)
+        y = 0
+        x = 0
+        self.displayImage(1, x, y)
 
     def testI2C(self):
-        tests=[self.I2C_ADDR_LIGHT_SENSOR,self.I2C_ADDR_LED_TEMP,self.I2C_ADDR_CTRL_TEMP,self.I2C_ADDR_LED_EEPROM,self.I2C_ADDR_CTRL_EEPROM]
-        length=2
+        tests = [self.I2C_ADDR_LIGHT_SENSOR, self.I2C_ADDR_LED_TEMP, self.I2C_ADDR_CTRL_TEMP, self.I2C_ADDR_LED_EEPROM, self.I2C_ADDR_CTRL_EEPROM]
+        length = 2
         for i2cAddr in tests:
             for i2cRegAddr in range(2):
-                print "Read I2C %02x reg %02x" % (i2cAddr,i2cRegAddr)
-                print "=%02x" % self.i2cRead(i2cAddr,i2cRegAddr,1)[0] 
-            #self.setAddressModulo(0)  #i2c leaves write modulo wacky
+                print("Read I2C {:02x} reg {:02x}".format(i2cAddr, i2cRegAddr))
+                print("={:02x}".format(self.i2cRead(i2cAddr, i2cRegAddr, 1)[0]))
+                # self.setAddressModulo(0)  #i2c leaves write modulo wacky
             self.toggleRedLED()
-                
-    #not working yet
+
+    # not working yet
     def readLightSensor(self):
-        #https://cdn-shop.adafruit.com/datasheets/TSL2561.pdf
-        i2cAddr=self.I2C_ADDR_LIGHT_SENSOR
-        
-        i2cRegAddr=0 | 0x80
-        controlReg=3 #3=power on
-        if self.i2cWrite(i2cAddr,i2cRegAddr,[controlReg]):
-            print "Light sensor not responding"
+        # https://cdn-shop.adafruit.com/datasheets/TSL2561.pdf
+        i2cAddr = self.I2C_ADDR_LIGHT_SENSOR
+
+        i2cRegAddr = 0 | 0x80
+        controlReg = 3  # 3=power on
+        if self.i2cWrite(i2cAddr, i2cRegAddr, [controlReg]):
+            print("Light sensor not responding")
             return
-        #read it back to check
-        checkControl=self.i2cRead(i2cAddr,i2cRegAddr,1)[0] 
-        print "rbc",checkControl
+        # read it back to check
+        checkControl = self.i2cRead(i2cAddr, i2cRegAddr, 1)[0]
+        print("rbc {}".format(checkControl))
 
-        i2cRegAddr=0xa|0x80  #id register
-        partId=self.i2cRead(i2cAddr,i2cRegAddr,1)[0] 
-        print "Part number= %02x" % partId
-        
-        i2cRegAddr=1 | 0x80
-        timingReg=0x02 #2=default; controls gain, integration time
-        partId=self.i2cWrite(i2cAddr,i2cRegAddr,[timingReg])
+        i2cRegAddr = 0xa | 0x80  # id register
+        partId = self.i2cRead(i2cAddr, i2cRegAddr, 1)[0]
+        print("Part number= {:02x}".format(partId))
+
+        i2cRegAddr = 1 | 0x80
+        timingReg = 0x02  # 2=default; controls gain, integration time
+        partId = self.i2cWrite(i2cAddr, i2cRegAddr, [timingReg])
         while True:
-            i2cRegAddr=0x0c | 0x80
-            adcReg=self.i2cRead(i2cAddr,i2cRegAddr,4)
-            ch0=adcReg[0]<<8  | adcReg[1]
-            ch1=adcReg[2]<<8  | adcReg[3]
-            print ch0,ch1
-    
+            i2cRegAddr = 0x0c | 0x80
+            adcReg = self.i2cRead(i2cAddr, i2cRegAddr, 4)
+            ch0 = adcReg[0] << 8 | adcReg[1]
+            ch1 = adcReg[2] << 8 | adcReg[3]
+            print("{} {}".format(ch0, ch1))
 
-    def setBB(self,bbBit,bbVal,noWrite=False):
-        self.bbState= (self.bbState & ~bbBit)|(bbVal*bbBit)
+    def setBB(self, bbBit, bbVal, noWrite=False):
+        self.bbState = (self.bbState & ~bbBit) | (bbVal * bbBit)
         if not noWrite:
-            self.nx4.writeRegister(NX4.OpenNX4_REG_BITBANG_TEST,[self.bbState])
-        
-    #baud stuff
-    def calcClockSettings():
-        baseClk=40000000
-        base=int(baseClk/115200)
+            self.nx4.writeRegister(NX4.OpenNX4_REG_BITBANG_TEST, [self.bbState])
+
+    # baud stuff
+    def calcClockSettings(self):
+        baseClk = 40000000
+        base = int(baseClk / 115200)
         for div in range(8):
-            actualBaud=baseClk/(base>>div)
-            print div,actualBaud
+            actualBaud = baseClk / (base >> div)
+            print("{} {}".format(div, actualBaud))
 
+    def testVideoPlayback(self, sourceFile, fps=25):
+        vs = VideoSource(tileW=32, tileH=36, tileArrayW=1, tileArrayH=1, tileIndexX=0, tileIndexY=0)
+        # vs=VideoSource(tileW=32,tileH=36,tileArrayW=3,tileArrayH=3,tileIndexX=1,tileIndexY=1)
 
-    def testVideoPlayback(self,sourceFile,fps=25):
-        vs=VideoSource(tileW=32,tileH=36,tileArrayW=1,tileArrayH=1,tileIndexX=0,tileIndexY=0)
-        #vs=VideoSource(tileW=32,tileH=36,tileArrayW=3,tileArrayH=3,tileIndexX=1,tileIndexY=1)
-
-        vs.start(sourceFile,fps=fps)
-        fbTarget=0
-        frameCount=0
-        debug=False
+        vs.start(sourceFile, fps=fps)
+        fbTarget = 0
+        frameCount = 0
+        debug = False
         while True:
-            frame=vs.nextFrame()
+            frame = vs.nextFrame()
 
-            playTime=frameCount/fps
-            print "%02d:%02d:%02d - %06d" % (int(playTime/60),int(playTime%60),(playTime%1)%100,frameCount)
-            frameCount+=1
+            playTime = frameCount / fps
+            print("{:02d}:{:02d}:{:02d} - {:06d}".format(int(playTime / 60), int(playTime % 60), (playTime % 1) % 100, frameCount))
+            frameCount += 1
 
-            
-            #for now, until we get row scan working, duplicate each row 6 times, effectively lowering the vertical res to 6 pixels :-)
-            dupeRows=False
+            # for now, until we get row scan working, duplicate each row 6 times, effectively lowering the vertical res to 6 pixels :-)
+            dupeRows = False
             if dupeRows:
-                frameOut=""
-                height=36
-                row=0
-                while row<height:
-                    rowData=frame[row*32*3:(row+1)*32*3]
-                    frameOut+=rowData*6
-                    row+=6
-                #endhack
+                frameOut = ""
+                height = 36
+                row = 0
+                while row < height:
+                    rowData = frame[row * 32 * 3:(row + 1) * 32 * 3]
+                    frameOut += rowData * 6
+                    row += 6
+                # endhack
 
-            #it's not very complicated... 
-            self.setFBTarget(1<<fbTarget)
-            frame=[ord(d) for d in frame]
-            self.nx4.writeFB(0,frame)
+            # it's not very complicated...
+            self.setFBTarget(1 << fbTarget)
+            frame = [ord(d) for d in frame]
+            self.nx4.writeFB(0, frame)
 
+            blend0 = 0xff if fbTarget == 0 else 0
+            blend1 = 0xff - blend0
+            self.setBufferBlend(blend0, blend1)
 
-            blend0=0xff if fbTarget==0 else 0
-            blend1=0xff-blend0
-            self.setBufferBlend(blend0,blend1)
-
-            fbTarget^=1
-            
+            fbTarget ^= 1
 
             if debug:
                 for n in range(16):
-                    m=n*3
-                    print "%02x%02x%02x" % (ord(frame[m]),ord(frame[m+1]),ord(frame[m+2])),
-                print ""
+                    m = n * 3
+                    print("{:02x}{:02x}{:02x}".format(ord(frame[m]), ord(frame[m + 1]), ord(frame[m + 2])), end=' ')
+                print("")
 
-        
-
-    def fiddlewithCPLD(self,scan):
+    def fiddlewithCPLD(self, scan):
         """
         `define  OpenNX4_REG_CPLD_BITBANG_BIT_PIN2 0        
         `define  OpenNX4_REG_CPLD_BITBANG_BIT_PIN3 1        
@@ -1145,19 +1101,17 @@ class OpenNX4(NX4BitbangedI2C):
         `define  OpenNX4_REG_CPLD_BITBANG_BIT_PIN43 5       
         `define  OpenNX4_REG_CPLD_BITBANG_BIT_PIN44 6       
         """
-        #f=random.randint(0,255)
-        self.nx4.cpldTest=(self.nx4.cpldTest+1) #f #^=1 #^=(1<<NX4.OpenNX4_REG_CPLD_BITBANG_BIT_PIN2)
-        print "%02x " % self.nx4.cpldTest,
-        status=self.nx4.writeRegister(NX4.OpenNX4_REG_CPLD_BITBANG_TEST,[self.nx4.cpldTest&0xff])
-        print " = st %02x" % (status[0]>>3)
+        # f=random.randint(0,255)
+        self.nx4.cpldTest = (self.nx4.cpldTest + 1)  # f #^=1 #^=(1<<NX4.OpenNX4_REG_CPLD_BITBANG_BIT_PIN2)
+        print("{:02x} ".format(self.nx4.cpldTest), end=' ')
+        status = self.nx4.writeRegister(NX4.OpenNX4_REG_CPLD_BITBANG_TEST, [self.nx4.cpldTest & 0xff])
+        print(" = st {:02x}".format(status[0] >> 3))
 
-
-
-    #obsolete stuff that bit-bangs the led ports for initial testing
+    # obsolete stuff that bit-bangs the led ports for initial testing
     """
     def shiftPix(self,width,value,repeats=1,latch=False):
-        for r in xrange(repeats):
-            for n in xrange(width):
+        for r in range(repeats):
+            for n in range(width):
                 bit=(value>>((width-1)-n))&1
                 self.setBB(PIX,bit)
                 self.setBB(SCLK,1)
@@ -1174,7 +1128,7 @@ class OpenNX4(NX4BitbangedI2C):
         self.pixelRegsDump.append(rDriver)
 
     def flushPixelRegs(self):
-        #print "Flushing",len(self.pixelRegsDump)
+        print("Flushing {}".format(len(self.pixelRegsDump))
         #the target modulo is set so writing two values loops forever over the two bitbang destination registers
         self.nx4.writeRegister(NX4.OpenNX4_REG_DRIVERL_BITBANG_TEST,self.pixelRegsDump,skipReply=True)
         self.pixelRegsDump=[]
@@ -1335,7 +1289,7 @@ class OpenNX4(NX4BitbangedI2C):
         #set it to use 1-byte length prefixes to delineate commands
         pixelPos=0
         nextRow=(6*32*3)
-        for n in xrange(self.count):
+        for n in range(self.count):
             self.bitbangDotCorrect(DOT_CORRECT_DEFAULT)
     
             for r in range(6):
@@ -1351,29 +1305,19 @@ class OpenNX4(NX4BitbangedI2C):
                 #print "%.4f" % (time.time()-ts)
                 if self.ioDevice.stop:
                     return
-    """     
-            
-    def loadImage(self,filename):
+    """
+
+    def loadImage(self, filename):
         if not HAS_PYGAME:
             raise Exception("Need to install pygame (e.g. 'apt-get install python-pygame', also available on windows)")
-        image=pygame.image.load(filename)
-        print "Loaded %s : %dx%d" % (filename,image.get_width(),image.get_height() )
-        imageID=len(self.images)
-        self.images.append( (image.get_width(),image.get_height(),[ ord(d) for d in pygame.image.tostring(image,"RGB")] ) )
+        image = pygame.image.load(filename)
+        print("Loaded {} : {:d}x{:d}".format(filename, image.get_width(), image.get_height()))
+        imageID = len(self.images)
+        self.images.append((image.get_width(), image.get_height(), [ord(d) for d in pygame.image.tostring(image, "RGB")]))
         return imageID
 
 
-
-
-
-
-
-
-
-
-
-
-#////////////////////////////////////////////////
+# ////////////////////////////////////////////////
 """ 
 todo cmdline args
 DEFAULT_SERIAL_PORT="/dev/ttyUSB0"
@@ -1395,10 +1339,10 @@ DEFAULT_SERIAL_PORT="/dev/ttyUSB0"
 
 """
 
-test="uart"
-simulate=False
-if len(sys.argv)>1:
-    simulate=(sys.argv[1]=="test")
+test = "uart"
+simulate = False
+if len(sys.argv) > 1:
+    simulate = (sys.argv[1] == "test")
 
 """
 if test=="spi":
@@ -1406,55 +1350,47 @@ if test=="spi":
     t=SPITest().generateTest("spi_tester_gen.v")
 """
 
+if test == "uart":
+    o = OpenNX4(simulate=simulate)
 
-if test=="uart":
-    o=OpenNX4(simulate=simulate)
-
-    
-    brightness=5  #goes up to 63.. BE CAREFUL b/c we haven't got row scanning running, keep this low (say <20) or you may overheat the single row LEDs
-    #o.testILWrite()
-    o.setPixelClock(2,0)
-    o.loadDotCorrect(brightness)    #load all pixels w/same dotcorrect value
+    brightness = 5  # goes up to 63.. BE CAREFUL b/c we haven't got row scanning running, keep this low (say <20) or you may overheat the single row LEDs
+    # o.testILWrite()
+    o.setPixelClock(2, 0)
+    o.loadDotCorrect(brightness)  # load all pixels w/same dotcorrect value
     o.clearFB()
 
-    #this is so slow you can see the rows scanning, is kinda cool/useful
-    #o.setPixelClock(9,0) 
+    # this is so slow you can see the rows scanning, is kinda cool/useful
+    # o.setPixelClock(9,0)
 
     while not o.ioDevice.stop:
-        
+
         try:
-            #o.testFlashPowerLED()   #'hello world!'
-            #o.testWriteFB()
-            #o.testSetupFill()
+            # o.testFlashPowerLED()   #'hello world!'
+            # o.testWriteFB()
+            # o.testSetupFill()
             o.testImageDisplay()
             o.testFBBlending()
-        
-            #anything ffmpeg will play..
-            #o.testVideoPlayback("../../media/test.mkv",fps=23.976215)
-            #o.ioDevice.stop=True
-            #o.testDotCorrectLoad()
-            
-            #this is a great speed for actual use, 5mhz pixel clock
-            #which is only 695us for a whole frame (1438fps)
-            
-            
-            #o.testWriteTestPixel()
-            #o.testI2C()
-            
-            #o.testRWMemory()
-            #o.dumpMainFlash()
-            #o.dumpEEPROMs()
-            #o.readLightSensor()
-            #o.testLoadLEDs()
-            #o.bitBangLEDs()
-            o.count+=1
+
+            # anything ffmpeg will play..
+            # o.testVideoPlayback("../../media/test.mkv",fps=23.976215)
+            # o.ioDevice.stop=True
+            # o.testDotCorrectLoad()
+
+            # this is a great speed for actual use, 5mhz pixel clock
+            # which is only 695us for a whole frame (1438fps)
+
+            # o.testWriteTestPixel()
+            # o.testI2C()
+
+            # o.testRWMemory()
+            # o.dumpMainFlash()
+            # o.dumpEEPROMs()
+            # o.readLightSensor()
+            # o.testLoadLEDs()
+            # o.bitBangLEDs()
+            o.count += 1
         except ReadTimeout:
-            print ">> Read timeout <<"
-        
-    print "Closing"
+            print(">> Read timeout <<")
+
+    print("Closing")
     o.close()
-
-
-
-
-
